@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /*
@@ -16,7 +17,18 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->beforeEach(function () {
+        // Isolate sandbox writes to a throwaway directory per test.
+        $path = sys_get_temp_dir().'/atelier-sandbox-test-'.getmypid();
+        config(['atelier.sandbox.path' => $path]);
+    })
+    ->afterEach(function () {
+        $path = config('atelier.sandbox.path');
+        if (is_string($path) && str_contains($path, 'atelier-sandbox-test-') && is_dir($path)) {
+            File::deleteDirectory($path);
+        }
+    })
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------

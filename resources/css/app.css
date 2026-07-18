@@ -64,3 +64,27 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* Rendered markdown page bodies (public stage). */
+.atelier-prose {
+    @apply text-zinc-700 leading-relaxed dark:text-zinc-300;
+}
+.atelier-prose > :first-child { @apply mt-0; }
+.atelier-prose h1 { @apply mt-8 mb-4 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
+.atelier-prose h2 { @apply mt-8 mb-3 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100; }
+.atelier-prose h3 { @apply mt-6 mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-100; }
+.atelier-prose h4 { @apply mt-6 mb-2 text-lg font-semibold text-zinc-900 dark:text-zinc-100; }
+.atelier-prose p { @apply my-4; }
+.atelier-prose a { @apply font-medium text-zinc-900 underline underline-offset-2 dark:text-zinc-100; }
+.atelier-prose ul { @apply my-4 list-disc pl-6; }
+.atelier-prose ol { @apply my-4 list-decimal pl-6; }
+.atelier-prose li { @apply my-1; }
+.atelier-prose blockquote { @apply my-4 border-l-4 border-zinc-200 pl-4 italic text-zinc-500 dark:border-zinc-700 dark:text-zinc-400; }
+.atelier-prose code { @apply rounded bg-zinc-100 px-1.5 py-0.5 text-sm font-mono text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200; }
+.atelier-prose pre { @apply my-4 overflow-x-auto rounded-lg bg-zinc-900 p-4 text-sm text-zinc-100 dark:bg-zinc-800; }
+.atelier-prose pre code { @apply bg-transparent p-0 text-inherit; }
+.atelier-prose img { @apply my-4 max-w-full rounded-lg; }
+.atelier-prose hr { @apply my-8 border-zinc-200 dark:border-zinc-800; }
+.atelier-prose table { @apply my-4 w-full border-collapse text-sm; }
+.atelier-prose th, .atelier-prose td { @apply border border-zinc-200 px-3 py-2 text-left dark:border-zinc-800; }
+.atelier-prose th { @apply bg-zinc-50 font-semibold dark:bg-zinc-900; }
