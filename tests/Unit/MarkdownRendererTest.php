@@ -33,6 +33,61 @@ it('strips javascript link schemes', function () {
     expect($html)->not->toContain('javascript:');
 });
 
+it('renders markdown tables', function () {
+    $markdown = <<<'MD'
+    | Name | Role |
+    | ---- | ---- |
+    | Ada  | Lead |
+    MD;
+
+    $html = $this->renderer->render($markdown);
+
+    expect($html)->toContain('<table>')
+        ->and($html)->toContain('<th>Name</th>')
+        ->and($html)->toContain('<td>Ada</td>');
+});
+
+it('renders strikethrough', function () {
+    expect($this->renderer->render('~~gone~~'))->toContain('<del>gone</del>');
+});
+
+it('autolinks bare urls', function () {
+    $html = $this->renderer->render('See https://example.com for details.');
+
+    expect($html)->toContain('href="https://example.com"');
+});
+
+it('renders task lists', function () {
+    $html = $this->renderer->render("- [x] done\n- [ ] todo");
+
+    expect($html)->toContain('type="checkbox"')
+        ->and($html)->toContain('checked');
+});
+
+it('applies smart punctuation', function () {
+    $html = $this->renderer->render('"quoted" -- dash...');
+
+    expect($html)->toContain('“')
+        ->and($html)->toContain('”')
+        ->and($html)->toContain('–')
+        ->and($html)->toContain('…');
+});
+
+it('marks external links with rel and target', function () {
+    $html = $this->renderer->render('[out](https://external-example.test)');
+
+    expect($html)->toContain('target="_blank"')
+        ->and($html)->toContain('rel="')
+        ->and($html)->toContain('noopener');
+});
+
+it('does not mark internal links as external', function () {
+    $internal = parse_url((string) config('app.url'), PHP_URL_HOST);
+    $html = $this->renderer->render("[home](https://{$internal}/page)");
+
+    expect($html)->not->toContain('target="_blank"');
+});
+
 it('returns an empty string for blank input', function () {
     expect($this->renderer->render(null))->toBe('')
         ->and($this->renderer->render(''))->toBe('');
