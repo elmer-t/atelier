@@ -79,7 +79,11 @@ it('adds a download-only file when placement is set to download', function () {
         ->assertHasNoErrors();
 
     $asset = $this->project->assets()->first();
-    expect($asset->isDownload())->toBeTrue();
+    expect($asset->isDownload())->toBeTrue()
+        ->and($asset->original_filename)->toBe('spec.pdf')
+        ->and($asset->mime_type)->toBe('application/pdf')
+        ->and($asset->size_bytes)->toBe(20 * 1024);
+    Storage::disk('local')->assertExists($asset->stored_path);
 });
 
 it('reorders assets across types', function () {

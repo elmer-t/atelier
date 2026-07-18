@@ -9,6 +9,14 @@ test('login screen can be rendered', function () {
     $response->assertOk();
 });
 
+test('login screen shows the Atelier brand and no Laravel branding', function () {
+    $response = $this->get(route('login'));
+
+    $response->assertOk();
+    $response->assertSee('Atelier');
+    $response->assertDontSee('Laravel Starter Kit');
+});
+
 test('users can authenticate using the login screen', function () {
     $user = User::factory()->create();
 

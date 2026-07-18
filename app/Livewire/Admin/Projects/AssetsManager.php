@@ -182,7 +182,13 @@ class AssetsManager extends Component
         ]);
 
         if ($this->file) {
+            // Read metadata before storing: storeAs() moves the temporary file
+            // when the target and temp disks match, so getSize()/getMimeType()
+            // would fail on the now-removed source afterwards.
             $original = $this->file->getClientOriginalName();
+            $mimeType = $this->file->getMimeType();
+            $size = $this->file->getSize();
+
             $stored = $this->file->storeAs(
                 "assets/{$this->project->id}",
                 Str::uuid().'-'.$original,
@@ -202,8 +208,8 @@ class AssetsManager extends Component
 
             $asset->stored_path = $stored;
             $asset->original_filename = $original;
-            $asset->mime_type = $this->file->getMimeType();
-            $asset->size_bytes = $this->file->getSize();
+            $asset->mime_type = $mimeType;
+            $asset->size_bytes = $size;
         }
 
         $asset->save();
