@@ -36,7 +36,11 @@ class MarkdownRenderer
             ->allowAttribute('rel', ['a'])
             ->allowAttribute('target', ['a'])
             ->allowElement('input', ['type', 'checked', 'disabled'])
-            ->forceHttpsUrls(false);
+            ->forceHttpsUrls(false)
+            // Symfony's sanitizer truncates its input at 20 KB by default, which
+            // silently cuts off the rendered HTML of longer pages. Disable the cap
+            // so full documents are served.
+            ->withMaxInputLength(-1);
 
         $this->sanitizer = new HtmlSanitizer($config);
     }

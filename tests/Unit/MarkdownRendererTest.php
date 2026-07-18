@@ -88,6 +88,21 @@ it('does not mark internal links as external', function () {
     expect($html)->not->toContain('target="_blank"');
 });
 
+it('renders documents larger than the sanitizer default input cap', function () {
+    // Build markdown whose rendered HTML comfortably exceeds Symfony's 20 KB
+    // default input length, then assert the very end still makes it through.
+    $paragraphs = collect(range(1, 400))
+        ->map(fn (int $i) => "Paragraph number {$i} with some filler text to add length.")
+        ->implode("\n\n");
+
+    $markdown = $paragraphs."\n\n## The Final Heading";
+
+    $html = $this->renderer->render($markdown);
+
+    expect(strlen($html))->toBeGreaterThan(20_000)
+        ->and($html)->toContain('<h2>The Final Heading</h2>');
+});
+
 it('returns an empty string for blank input', function () {
     expect($this->renderer->render(null))->toBe('')
         ->and($this->renderer->render(''))->toBe('');
