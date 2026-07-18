@@ -6,17 +6,14 @@ them in the browser and never log in.
 
 ## Language
 
-### People
+### People — unresolved (see issue #8)
 
-**Operator**:
-The single person who runs an Atelier installation — creates projects, uploads assets, and
-sets visibility and passwords. Backed by the authenticated `User`.
-_Avoid_: admin, user, administrator
-
-**Viewer**:
-Someone who opens a project's shareable link to look at the work. Never authenticates;
-known only by a per-project session.
-_Avoid_: client, recipient, guest
+The vocabulary for the people in the system is **deliberately not yet canonicalised**. The
+terms overlap and their relationships are still being worked out: the admin/operator who runs
+the installation, the client/viewer who receives a link, and the future users, tenants, and
+organizations that come with client accounts and multi-tenancy. Left out of the glossary
+until a dedicated `/wayfinder` session resolves it — tracked in issue #8. Do not canonicalise
+these terms ad hoc in the meantime.
 
 ### Content
 
