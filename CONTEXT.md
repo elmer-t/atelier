@@ -119,7 +119,8 @@ _Avoid_: response, answer
 
 **Resolved**:
 The state of a Thread the Creator has marked as handled, closing the feedback loop. Reversible,
-and only the Creator sets it.
+and only the human Creator sets it — an Agent, though it acts as the Creator, may reply to a
+Thread but never Resolve it, so a human eye always gates the loop.
 _Avoid_: closed, done, archived
 
 ### Serving & isolation
