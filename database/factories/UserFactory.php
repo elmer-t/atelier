@@ -52,6 +52,19 @@ class UserFactory extends Factory
     }
 
     /**
+     * The dedicated non-human Agent User (ADR-0006).
+     */
+    public function agent(): static
+    {
+        return $this->state(fn () => [
+            'role' => UserRole::Agent,
+            'password' => null,
+            'email_verified_at' => null,
+            'remember_token' => null,
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

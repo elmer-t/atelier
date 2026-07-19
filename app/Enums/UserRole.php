@@ -12,12 +12,14 @@ enum UserRole: string
 {
     case Creator = 'creator';
     case Client = 'client';
+    case Agent = 'agent';
 
     public function label(): string
     {
         return match ($this) {
             self::Creator => 'Creator',
             self::Client => 'Client',
+            self::Agent => 'Agent',
         };
     }
 
@@ -27,6 +29,6 @@ enum UserRole: string
      */
     public function isHuman(): bool
     {
-        return true;
+        return $this !== self::Agent;
     }
 }
