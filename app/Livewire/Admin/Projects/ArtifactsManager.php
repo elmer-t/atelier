@@ -52,6 +52,9 @@ class ArtifactsManager extends Component
 
     public ?int $diffToId = null;
 
+    /** The past Revision opened for reading in full, if any. */
+    public ?int $viewingRevisionId = null;
+
     /**
      * @return Collection<int, Artifact>
      */
@@ -103,6 +106,23 @@ class ArtifactsManager extends Component
         }
 
         return app(LineDiffer::class)->diff($from->body, $to->body);
+    }
+
+    /**
+     * The past Revision the Creator has opened to read in full, or null when none is
+     * open. Read-only — viewing never changes the document (User Story 4).
+     */
+    #[Computed]
+    public function viewedRevision(): ?ArtifactRevision
+    {
+        if ($this->viewingRevisionId === null || $this->editingArtifactId === null) {
+            return null;
+        }
+
+        return $this->project->artifacts()
+            ->findOrFail($this->editingArtifactId)
+            ->revisions()
+            ->find($this->viewingRevisionId);
     }
 
     public function startCreate(string $type): void
@@ -179,6 +199,22 @@ class ArtifactsManager extends Component
      * Roll a markdown Artifact back to an older Revision by appending a copy of it
      * as the new current Revision — history is never rewritten (ADR-0005).
      */
+    /**
+     * Open a past Revision to read its full content, without changing the document
+     * (User Story 4).
+     */
+    public function viewRevision(int $revisionId): void
+    {
+        $this->viewingRevisionId = $revisionId;
+        unset($this->viewedRevision);
+    }
+
+    public function stopViewingRevision(): void
+    {
+        $this->viewingRevisionId = null;
+        unset($this->viewedRevision);
+    }
+
     public function restoreRevision(int $revisionId, MarkdownRevisionWriter $writer): void
     {
         $artifact = $this->project->artifacts()->findOrFail($this->editingArtifactId);
@@ -187,6 +223,7 @@ class ArtifactsManager extends Component
         $writer->restore($artifact, $revision, auth()->user());
 
         $this->body = (string) $artifact->body;
+        $this->stopViewingRevision();
         unset($this->revisions, $this->diff, $this->artifacts);
 
         Flux::toast(variant: 'success', text: __('Revision restored.'));
@@ -368,8 +405,9 @@ class ArtifactsManager extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'diffFromId', 'diffToId']);
+        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'diffFromId', 'diffToId', 'viewingRevisionId']);
         $this->resetErrorBag();
+        unset($this->viewedRevision);
     }
 
     public function render(): View
