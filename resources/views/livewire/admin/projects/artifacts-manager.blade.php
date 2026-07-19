@@ -92,6 +92,7 @@
                                             <flux:badge size="sm" color="green">Current</flux:badge>
                                         @endif
                                         <span class="ml-auto flex items-center gap-1">
+                                            <flux:button size="xs" variant="ghost" wire:click="viewRevision({{ $revision->id }})">View</flux:button>
                                             <flux:button size="xs" variant="ghost" wire:click="$set('diffFromId', {{ $revision->id }})">A</flux:button>
                                             <flux:button size="xs" variant="ghost" wire:click="$set('diffToId', {{ $revision->id }})">B</flux:button>
                                             @unless ($loop->first)
@@ -101,6 +102,16 @@
                                     </li>
                                 @endforeach
                             </ul>
+
+                            @if ($this->viewedRevision !== null)
+                                <div class="mt-3 rounded border border-zinc-200 p-2 dark:border-zinc-700">
+                                    <div class="mb-1 flex items-center justify-between">
+                                        <flux:text size="sm" class="text-zinc-400">Viewing an earlier revision</flux:text>
+                                        <flux:button size="xs" variant="ghost" icon="x-mark" wire:click="stopViewingRevision">Close</flux:button>
+                                    </div>
+                                    <pre class="overflow-x-auto rounded bg-zinc-50 p-2 font-mono text-xs whitespace-pre-wrap dark:bg-zinc-900">{{ $this->viewedRevision->body }}</pre>
+                                </div>
+                            @endif
 
                             @if (filled($this->diff))
                                 <div class="mt-3 overflow-x-auto rounded bg-zinc-50 p-2 font-mono text-xs dark:bg-zinc-900">

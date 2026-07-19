@@ -215,3 +215,24 @@ it('produces a line diff between two Revisions', function () {
                 ->assertSee('+ line c');
         });
 });
+
+it('opens a past Revision to read its full content without changing the document', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    $firstRevisionId = $artifact->revisions()->firstOrFail()->id;
+
+    $component = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')->call('save')
+        ->call('startEdit', $artifact->id)
+        ->call('viewRevision', $firstRevisionId);
+
+    expect($component->instance()->viewedRevision->body)->toBe('# One');
+    $component->assertSee('# One');
+
+    // Viewing changed nothing: still two Revisions and the latest is current.
+    expect($artifact->refresh()->revisions()->count())->toBe(2)
+        ->and($artifact->body)->toBe('# Two');
+
+    $component->call('stopViewingRevision');
+    expect($component->instance()->viewedRevision)->toBeNull();
+});
