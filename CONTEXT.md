@@ -9,9 +9,10 @@ them in the browser and never log in.
 ### People
 
 **User**:
-Any human with an authenticated login. A pure authentication concept — the roles a User
-plays (Creator, Client) layer on top, so the term absorbs new roles without redefinition.
-Today the sole User is the Creator.
+Any authenticated principal — a human or an automated agent — that holds a login. A pure
+authentication concept — the roles a User plays (Creator, Client, Agent) layer on top, so the
+term absorbs new roles without redefinition. Today the sole User is the Creator; an editing
+agent authenticates as its own dedicated User (#6).
 
 **Creator**:
 The role of a User who builds and presents projects — a developer, designer, or PM
