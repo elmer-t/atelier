@@ -117,11 +117,45 @@ it('keeps the password field in the markup for public projects', function () {
         ->assertSee('x-bind:disabled="$wire.isPublic"', escape: false);
 });
 
-it('regenerates the shareable slug', function () {
+it('reissues the shareable link, rotating slug and sandbox token', function () {
     $project = Project::factory()->create();
-    $old = $project->slug;
+    $oldSlug = $project->slug;
+    $oldToken = $project->sandbox_token;
 
-    Livewire::test(Manage::class, ['project' => $project])->call('regenerateSlug');
+    Livewire::test(Manage::class, ['project' => $project])->call('reissueLink');
 
-    expect($project->refresh()->slug)->not->toBe($old);
+    $project->refresh();
+
+    expect($project->slug)->not->toBe($oldSlug)
+        ->and($project->sandbox_token)->not->toBe($oldToken);
+});
+
+it('shows whether and when each project was last viewed on the index', function () {
+    Project::factory()->create(['title' => 'Never Opened']);
+    $seen = Project::factory()->create(['title' => 'Already Opened']);
+    $seen->recordView();
+
+    Livewire::test(Index::class)
+        ->assertSee('Never Opened')
+        ->assertSee('Not yet viewed')
+        ->assertSee('Already Opened')
+        ->assertSee('ago');
+});
+
+it('saves an optional link expiry and clears it', function () {
+    $project = Project::factory()->public()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('expiresAt', now()->addWeek()->format('Y-m-d\TH:i'))
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->expires_at)->not->toBeNull();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('expiresAt', '')
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->expires_at)->toBeNull();
 });

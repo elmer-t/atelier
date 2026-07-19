@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Guards the public project routes:
  *
- *  - Archived projects are hard-disabled (404) even via direct link.
+ *  - Archived or expired projects are hard-disabled (404) even via direct link.
  *  - Private projects require a passed password gate for the current session;
  *    otherwise the viewer is redirected to the gate.
  *  - Public (and unlocked private) projects pass through.
@@ -29,7 +29,7 @@ class EnsureProjectAccessible
 
         abort_unless($project instanceof Project, 404);
 
-        if ($project->isArchived()) {
+        if ($project->isHardDisabled()) {
             abort(404);
         }
 

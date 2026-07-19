@@ -61,6 +61,51 @@ it('hard-disables archived projects even by direct link', function () {
     $this->get(route('project.gate', $project))->assertNotFound();
 });
 
+it('hard-disables a project past its expiry', function () {
+    $project = Project::factory()->public()->expired()->create();
+
+    $this->get(route('project.show', $project))->assertNotFound();
+    $this->get(route('project.gate', $project))->assertNotFound();
+});
+
+it('keeps a project reachable before its expiry and after clearing it', function () {
+    $project = Project::factory()->public()->expiresAt(now()->addDay())->create();
+    Artifact::factory()->for($project)->markdown('# Still live')->create();
+
+    $this->get(route('project.show', $project))->assertOk()->assertSee('Still live');
+
+    // Move expiry into the past → 404, then clear it → reachable again.
+    $project->forceFill(['expires_at' => now()->subMinute()])->save();
+    $this->get(route('project.show', $project))->assertNotFound();
+
+    $project->forceFill(['expires_at' => null])->save();
+    $this->get(route('project.show', $project))->assertOk()->assertSee('Still live');
+});
+
+it('records first and last viewed timestamps when a project is opened', function () {
+    $project = Project::factory()->public()->create();
+    Artifact::factory()->for($project)->markdown('# Hi')->create();
+
+    $project->refresh();
+    expect($project->last_viewed_at)->toBeNull()
+        ->and($project->view_count)->toBe(0);
+
+    $this->get(route('project.show', $project))->assertOk();
+
+    $project->refresh();
+    expect($project->first_viewed_at)->not->toBeNull()
+        ->and($project->last_viewed_at)->not->toBeNull()
+        ->and($project->view_count)->toBe(1);
+
+    $firstViewedAt = $project->first_viewed_at;
+
+    $this->get(route('project.show', $project))->assertOk();
+
+    $project->refresh();
+    expect($project->view_count)->toBe(2)
+        ->and($project->first_viewed_at->equalTo($firstViewedAt))->toBeTrue();
+});
+
 it('invalidates the viewer session when the password is rotated', function () {
     $project = Project::factory()->private('first')->create();
 
