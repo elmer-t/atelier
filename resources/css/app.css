@@ -88,3 +88,43 @@ select:focus[data-flux-control] {
 .atelier-prose table { @apply my-4 w-full border-collapse text-sm; }
 .atelier-prose th, .atelier-prose td { @apply border border-zinc-200 px-3 py-2 text-left dark:border-zinc-800; }
 .atelier-prose th { @apply bg-zinc-50 font-semibold dark:bg-zinc-900; }
+
+/* Comment anchors: the link between a Thread in the rail and its spot in the stage. */
+.atelier-anchor {
+    @apply cursor-pointer rounded-sm bg-amber-100 px-0.5 text-inherit transition-colors dark:bg-amber-500/25;
+}
+.atelier-anchor:hover {
+    @apply bg-amber-200 dark:bg-amber-500/40;
+}
+.atelier-anchor[data-anchor-resolved='yes'] {
+    @apply bg-zinc-100 dark:bg-zinc-700/40;
+}
+
+/* Fallback for a quote spanning several elements: highlight the block that holds it. */
+.atelier-anchor-block {
+    @apply cursor-pointer rounded-r-sm border-l-2 border-amber-300 bg-amber-50/60 pl-3 transition-colors dark:border-amber-500/50 dark:bg-amber-500/10;
+}
+.atelier-anchor-block:hover {
+    @apply bg-amber-50 dark:bg-amber-500/20;
+}
+.atelier-anchor-block[data-anchor-resolved='yes'] {
+    @apply border-zinc-200 bg-transparent dark:border-zinc-700;
+}
+
+.atelier-anchor-flash {
+    @apply ring-2 ring-amber-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900;
+}
+
+/* An anchor whose quote is absent from the current revision: say so, don't pretend. */
+.atelier-anchor-missing {
+    @apply hidden;
+}
+[data-anchor-found='no'] .atelier-anchor-missing {
+    @apply block;
+}
+[data-anchor-found='no'] .atelier-anchor-quote {
+    @apply border-zinc-200 text-zinc-400 line-through dark:border-zinc-700;
+}
+[data-anchor-found='no'] {
+    @apply cursor-default;
+}

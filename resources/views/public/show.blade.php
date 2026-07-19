@@ -59,16 +59,19 @@
         </aside>
 
         {{-- Main stage --}}
-        <main class="flex-1 lg:h-screen lg:overflow-y-auto">
+        <main class="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
             @if (! $current)
                 <div class="flex h-full items-center justify-center p-12 text-center">
                     <p class="text-zinc-400 dark:text-zinc-500">This project has no pages yet.</p>
                 </div>
             @else
                 @include($current->type->stagePartial())
-
-                <livewire:public.artifact-comments :artifact="$current" :wire:key="'comments-'.$current->id" />
             @endif
         </main>
+
+        {{-- Feedback rail: docked right on desktop, stacked beneath the stage on mobile. --}}
+        @if ($current)
+            <livewire:public.artifact-comments :artifact="$current" :wire:key="'comments-'.$current->id" />
+        @endif
     </div>
 </x-public.layout>

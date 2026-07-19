@@ -149,7 +149,7 @@ class ArtifactComments extends Component
         $this->notifyCreators($comment);
 
         $this->reset('draft', 'draftAnchor');
-        unset($this->threads);
+        $this->refreshThreads();
     }
 
     /**
@@ -176,7 +176,7 @@ class ArtifactComments extends Component
         $this->notifyCreators($comment);
 
         $this->reset('replyDraft', 'replyingToId');
-        unset($this->threads);
+        $this->refreshThreads();
     }
 
     public function startReply(int $rootId): void
@@ -205,7 +205,7 @@ class ArtifactComments extends Component
         }
 
         $comment->delete();
-        unset($this->threads);
+        $this->refreshThreads();
     }
 
     private function toggleResolved(int $rootId, bool $resolved): void
@@ -222,7 +222,18 @@ class ArtifactComments extends Component
             'resolved_by' => $resolved ? $commenter->id : null,
         ])->save();
 
+        $this->refreshThreads();
+    }
+
+    /**
+     * Drop the cached Threads and ask the client to re-draw its anchor highlights, which
+     * live in the stage DOM outside this component and so survive the morph untouched.
+     */
+    private function refreshThreads(): void
+    {
         unset($this->threads);
+
+        $this->dispatch('threads-updated');
     }
 
     /**
