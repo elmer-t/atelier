@@ -125,6 +125,14 @@ and only the human Creator sets it — an Agent (a non-human User) may reply to 
 never Resolve it, so a human eye always gates the loop.
 _Avoid_: closed, done, archived
 
+**Feedback digest**:
+The synthesized, per-project view an Agent pulls to learn where it must act: the project's
+unresolved Threads, plus the artifacts a human has edited since the Agent's own last Revision on
+them (each with its diff). It is the structured form of "the loop" — the server computes
+attention once, so the Agent need not re-derive it from raw history every session. A read-only,
+Agent-facing projection, never shown to Clients.
+_Avoid_: inbox, feed, queue, notification
+
 ### Serving & isolation
 
 **Origin**:
