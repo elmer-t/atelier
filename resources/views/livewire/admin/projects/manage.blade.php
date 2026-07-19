@@ -8,7 +8,7 @@
     <div class="mb-8 flex items-start justify-between gap-4">
         <div>
             <flux:heading size="xl">{{ $project->title }}</flux:heading>
-            <flux:subheading>Manage settings and assets for this project.</flux:subheading>
+            <flux:subheading>Manage settings and artifacts for this project.</flux:subheading>
         </div>
         <flux:badge :color="$project->isActive() ? 'blue' : 'amber'">{{ ucfirst($project->status->value) }}</flux:badge>
     </div>
@@ -65,8 +65,8 @@
         </form>
     </div>
 
-    {{-- Assets --}}
+    {{-- Artifacts --}}
     <div class="mb-8">
-        <livewire:admin.projects.assets-manager :project="$project" :key="'assets-'.$project->id" />
+        <livewire:admin.projects.artifacts-manager :project="$project" :key="'artifacts-'.$project->id" />
     </div>
 </div>

@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Admin\Projects;
 
-use App\Enums\AssetPlacement;
-use App\Enums\AssetType;
-use App\Models\Asset;
+use App\Enums\ArtifactPlacement;
+use App\Enums\ArtifactType;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\BundleUnpacker;
 use Flux\Flux;
@@ -16,7 +16,7 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
-class AssetsManager extends Component
+class ArtifactsManager extends Component
 {
     use WithFileUploads;
 
@@ -24,11 +24,11 @@ class AssetsManager extends Component
 
     public bool $showForm = false;
 
-    public ?int $editingAssetId = null;
+    public ?int $editingArtifactId = null;
 
     public string $formType = 'markdown';
 
-    public string $assetTitle = '';
+    public string $artifactTitle = '';
 
     public string $body = '';
 
@@ -45,32 +45,32 @@ class AssetsManager extends Component
     public ?TemporaryUploadedFile $file = null;
 
     /**
-     * @return Collection<int, Asset>
+     * @return Collection<int, Artifact>
      */
     #[Computed]
-    public function assets(): Collection
+    public function artifacts(): Collection
     {
-        return $this->project->assets()->get();
+        return $this->project->artifacts()->get();
     }
 
     public function startCreate(string $type): void
     {
         $this->resetForm();
-        $this->formType = (AssetType::tryFrom($type) ?? AssetType::Markdown)->value;
+        $this->formType = (ArtifactType::tryFrom($type) ?? ArtifactType::Markdown)->value;
         $this->showForm = true;
     }
 
-    public function startEdit(int $assetId): void
+    public function startEdit(int $artifactId): void
     {
-        $asset = $this->project->assets()->findOrFail($assetId);
+        $artifact = $this->project->artifacts()->findOrFail($artifactId);
 
         $this->resetForm();
-        $this->editingAssetId = $asset->id;
-        $this->formType = $asset->type->value;
-        $this->assetTitle = $asset->title;
-        $this->body = (string) $asset->body;
-        $this->entryFile = (string) $asset->entry_file;
-        $this->placement = ($asset->placement ?? AssetPlacement::Stage)->value;
+        $this->editingArtifactId = $artifact->id;
+        $this->formType = $artifact->type->value;
+        $this->artifactTitle = $artifact->title;
+        $this->body = (string) $artifact->body;
+        $this->entryFile = (string) $artifact->entry_file;
+        $this->placement = ($artifact->placement ?? ArtifactPlacement::Stage)->value;
         $this->showForm = true;
     }
 
@@ -81,15 +81,15 @@ class AssetsManager extends Component
     public function updatedFile(): void
     {
         if ($this->file !== null) {
-            $this->placement = AssetPlacement::defaultForMime($this->file->getMimeType())->value;
+            $this->placement = ArtifactPlacement::defaultForMime($this->file->getMimeType())->value;
         }
     }
 
     public function save(BundleUnpacker $unpacker): void
     {
         match ($this->formType) {
-            AssetType::Html->value => $this->saveHtml($unpacker),
-            AssetType::File->value => $this->saveFile(),
+            ArtifactType::Html->value => $this->saveHtml($unpacker),
+            ArtifactType::File->value => $this->saveFile(),
             default => $this->saveMarkdown(),
         };
     }
@@ -97,7 +97,7 @@ class AssetsManager extends Component
     protected function saveMarkdown(): void
     {
         $this->validate([
-            'assetTitle' => ['required', 'string', 'max:255'],
+            'artifactTitle' => ['required', 'string', 'max:255'],
             'mdFile' => ['nullable', 'file', 'mimes:md,txt,markdown', 'max:2048'],
             'body' => ['nullable', 'string'],
         ]);
@@ -107,13 +107,13 @@ class AssetsManager extends Component
             ? file_get_contents($this->mdFile->getRealPath())
             : $this->body;
 
-        $asset = $this->editingAssetId
-            ? $this->project->assets()->findOrFail($this->editingAssetId)
-            : $this->project->assets()->make(['type' => AssetType::Markdown, 'sort_order' => $this->nextSortOrder()]);
+        $artifact = $this->editingArtifactId
+            ? $this->project->artifacts()->findOrFail($this->editingArtifactId)
+            : $this->project->artifacts()->make(['type' => ArtifactType::Markdown, 'sort_order' => $this->nextSortOrder()]);
 
-        $asset->fill([
-            'title' => $this->assetTitle,
-            'type' => AssetType::Markdown,
+        $artifact->fill([
+            'title' => $this->artifactTitle,
+            'type' => ArtifactType::Markdown,
             'body' => $body,
         ])->save();
 
@@ -122,32 +122,32 @@ class AssetsManager extends Component
 
     protected function saveHtml(BundleUnpacker $unpacker): void
     {
-        $creating = ! $this->editingAssetId;
+        $creating = ! $this->editingArtifactId;
 
         $this->validate([
-            'assetTitle' => ['required', 'string', 'max:255'],
+            'artifactTitle' => ['required', 'string', 'max:255'],
             'zipFile' => [$creating ? 'required' : 'nullable', 'file', 'mimes:zip', 'max:51200'],
             'entryFile' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $asset = $this->editingAssetId
-            ? $this->project->assets()->findOrFail($this->editingAssetId)
-            : $this->project->assets()->make(['type' => AssetType::Html, 'sort_order' => $this->nextSortOrder()]);
+        $artifact = $this->editingArtifactId
+            ? $this->project->artifacts()->findOrFail($this->editingArtifactId)
+            : $this->project->artifacts()->make(['type' => ArtifactType::Html, 'sort_order' => $this->nextSortOrder()]);
 
-        $asset->fill(['title' => $this->assetTitle, 'type' => AssetType::Html]);
-        $asset->save();
+        $artifact->fill(['title' => $this->artifactTitle, 'type' => ArtifactType::Html]);
+        $artifact->save();
 
         if ($this->zipFile) {
             try {
                 $result = $unpacker->unpack(
                     $this->zipFile->getRealPath(),
                     $this->project,
-                    $asset,
+                    $artifact,
                     filled($this->entryFile) ? $this->entryFile : null,
                 );
             } catch (\RuntimeException $e) {
                 if ($creating) {
-                    $asset->delete();
+                    $artifact->delete();
                 }
 
                 $this->addError('zipFile', $e->getMessage());
@@ -155,7 +155,7 @@ class AssetsManager extends Component
                 return;
             }
 
-            $asset->update($result);
+            $artifact->update($result);
         }
 
         $this->finish(__('HTML page saved.'));
@@ -163,22 +163,22 @@ class AssetsManager extends Component
 
     protected function saveFile(): void
     {
-        $creating = ! $this->editingAssetId;
+        $creating = ! $this->editingArtifactId;
 
         $this->validate([
-            'assetTitle' => ['required', 'string', 'max:255'],
+            'artifactTitle' => ['required', 'string', 'max:255'],
             'file' => [$creating ? 'required' : 'nullable', 'file', 'max:102400'],
             'placement' => ['required', 'in:stage,download'],
         ]);
 
-        $asset = $this->editingAssetId
-            ? $this->project->assets()->findOrFail($this->editingAssetId)
-            : $this->project->assets()->make(['type' => AssetType::File, 'sort_order' => $this->nextSortOrder()]);
+        $artifact = $this->editingArtifactId
+            ? $this->project->artifacts()->findOrFail($this->editingArtifactId)
+            : $this->project->artifacts()->make(['type' => ArtifactType::File, 'sort_order' => $this->nextSortOrder()]);
 
-        $asset->fill([
-            'title' => $this->assetTitle,
-            'type' => AssetType::File,
-            'placement' => AssetPlacement::from($this->placement),
+        $artifact->fill([
+            'title' => $this->artifactTitle,
+            'type' => ArtifactType::File,
+            'placement' => ArtifactPlacement::from($this->placement),
         ]);
 
         if ($this->file) {
@@ -190,7 +190,7 @@ class AssetsManager extends Component
             $size = $this->file->getSize();
 
             $stored = $this->file->storeAs(
-                "assets/{$this->project->id}",
+                "artifacts/{$this->project->id}",
                 Str::uuid().'-'.$original,
                 'local',
             );
@@ -202,17 +202,17 @@ class AssetsManager extends Component
             }
 
             // Replace the previous file only once the new one is safely stored.
-            if (filled($asset->stored_path)) {
-                $asset->type->handler()->purge($asset);
+            if (filled($artifact->stored_path)) {
+                $artifact->type->handler()->purge($artifact);
             }
 
-            $asset->stored_path = $stored;
-            $asset->original_filename = $original;
-            $asset->mime_type = $mimeType;
-            $asset->size_bytes = $size;
+            $artifact->stored_path = $stored;
+            $artifact->original_filename = $original;
+            $artifact->mime_type = $mimeType;
+            $artifact->size_bytes = $size;
         }
 
-        $asset->save();
+        $artifact->save();
 
         $this->finish(__('File saved.'));
     }
@@ -236,31 +236,31 @@ class AssetsManager extends Component
         Flux::toast(text: __('Image uploaded and inserted.'));
     }
 
-    public function deleteAsset(int $assetId): void
+    public function deleteArtifact(int $artifactId): void
     {
-        $asset = $this->project->assets()->findOrFail($assetId);
+        $artifact = $this->project->artifacts()->findOrFail($artifactId);
 
-        $asset->type->handler()->purge($asset);
-        $asset->delete();
+        $artifact->type->handler()->purge($artifact);
+        $artifact->delete();
 
-        unset($this->assets);
-        Flux::toast(variant: 'success', text: __('Asset deleted.'));
+        unset($this->artifacts);
+        Flux::toast(variant: 'success', text: __('Artifact deleted.'));
     }
 
-    public function moveUp(int $assetId): void
+    public function moveUp(int $artifactId): void
     {
-        $this->swap($assetId, -1);
+        $this->swap($artifactId, -1);
     }
 
-    public function moveDown(int $assetId): void
+    public function moveDown(int $artifactId): void
     {
-        $this->swap($assetId, 1);
+        $this->swap($artifactId, 1);
     }
 
-    protected function swap(int $assetId, int $direction): void
+    protected function swap(int $artifactId, int $direction): void
     {
-        $assets = $this->project->assets()->get()->values();
-        $index = $assets->search(fn (Asset $a) => $a->id === $assetId);
+        $artifacts = $this->project->artifacts()->get()->values();
+        $index = $artifacts->search(fn (Artifact $a) => $a->id === $artifactId);
 
         if ($index === false) {
             return;
@@ -268,40 +268,40 @@ class AssetsManager extends Component
 
         $target = $index + $direction;
 
-        if ($target < 0 || $target >= $assets->count()) {
+        if ($target < 0 || $target >= $artifacts->count()) {
             return;
         }
 
-        $current = $assets[$index];
-        $neighbor = $assets[$target];
+        $current = $artifacts[$index];
+        $neighbor = $artifacts[$target];
 
         [$current->sort_order, $neighbor->sort_order] = [$neighbor->sort_order, $current->sort_order];
         $current->save();
         $neighbor->save();
 
-        unset($this->assets);
+        unset($this->artifacts);
     }
 
     protected function nextSortOrder(): int
     {
-        return (int) $this->project->assets()->max('sort_order') + 1;
+        return (int) $this->project->artifacts()->max('sort_order') + 1;
     }
 
     protected function finish(string $message): void
     {
         $this->resetForm();
-        unset($this->assets);
+        unset($this->artifacts);
         Flux::toast(variant: 'success', text: $message);
     }
 
     public function resetForm(): void
     {
-        $this->reset(['showForm', 'editingAssetId', 'formType', 'assetTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file']);
+        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file']);
         $this->resetErrorBag();
     }
 
     public function render(): View
     {
-        return view('livewire.admin.projects.assets-manager');
+        return view('livewire.admin.projects.artifacts-manager');
     }
 }

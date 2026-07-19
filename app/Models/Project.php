@@ -51,11 +51,11 @@ class Project extends Model
     }
 
     /**
-     * @return HasMany<Asset, $this>
+     * @return HasMany<Artifact, $this>
      */
-    public function assets(): HasMany
+    public function artifacts(): HasMany
     {
-        return $this->hasMany(Asset::class)->orderBy('sort_order');
+        return $this->hasMany(Artifact::class)->orderBy('sort_order');
     }
 
     public function isPrivate(): bool

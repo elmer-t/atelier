@@ -33,7 +33,7 @@
                                     {{ $project->title }}
                                 </a>
                                 <div class="text-xs text-zinc-400">
-                                    {{ $project->assets_count }} {{ Str::plural('asset', $project->assets_count) }}
+                                    {{ $project->artifacts_count }} {{ Str::plural('artifact', $project->artifacts_count) }}
                                 </div>
                             </td>
                             <td class="px-4 py-3">
@@ -66,7 +66,7 @@
                                             <flux:menu.separator />
                                             <flux:menu.item icon="trash" variant="danger"
                                                 wire:click="delete({{ $project->id }})"
-                                                wire:confirm="Delete this project and all its assets? This cannot be undone.">
+                                                wire:confirm="Delete this project and all its artifacts? This cannot be undone.">
                                                 Delete
                                             </flux:menu.item>
                                         </flux:menu>

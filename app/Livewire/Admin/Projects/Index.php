@@ -26,7 +26,7 @@ class Index extends Component
     public function projects(): Collection
     {
         return Project::query()
-            ->withCount('assets')
+            ->withCount('artifacts')
             ->latest()
             ->get();
     }

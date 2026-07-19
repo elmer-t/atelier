@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\AssetFileController;
+use App\Http\Controllers\ArtifactFileController;
 use App\Http\Controllers\MarkdownImageController;
 use App\Http\Controllers\ProjectGateController;
 use App\Http\Controllers\ProjectViewController;
@@ -29,15 +29,15 @@ Route::prefix('p/{project:slug}')->group(function () {
     // Gated content: archived => 404, private => requires session.
     Route::middleware('project.accessible')->group(function () {
         Route::get('/', [ProjectViewController::class, 'show'])->name('project.show');
-        Route::get('a/{asset}', [ProjectViewController::class, 'show'])
+        Route::get('a/{artifact}', [ProjectViewController::class, 'show'])
             ->scopeBindings()
-            ->name('project.asset');
-        Route::get('a/{asset}/file', [AssetFileController::class, 'show'])
+            ->name('project.artifact');
+        Route::get('a/{artifact}/file', [ArtifactFileController::class, 'show'])
             ->scopeBindings()
-            ->name('project.asset.file');
-        Route::get('a/{asset}/download', [AssetFileController::class, 'download'])
+            ->name('project.artifact.file');
+        Route::get('a/{artifact}/download', [ArtifactFileController::class, 'download'])
             ->scopeBindings()
-            ->name('project.asset.download');
+            ->name('project.artifact.download');
         Route::get('images/{filename}', MarkdownImageController::class)->name('project.image');
     });
 });

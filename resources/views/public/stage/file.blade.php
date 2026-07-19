@@ -1,6 +1,6 @@
 @php
-    $fileUrl = route('project.asset.file', [$project, $current]);
-    $downloadUrl = route('project.asset.download', [$project, $current]);
+    $fileUrl = route('project.artifact.file', [$project, $current]);
+    $downloadUrl = route('project.artifact.download', [$project, $current]);
     $isImage = str_starts_with((string) $current->mime_type, 'image/');
 @endphp
 

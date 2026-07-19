@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Asset;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\BundleUnpacker;
 use Illuminate\Support\Facades\File;
@@ -34,13 +34,13 @@ function makeZip(array $files, array $symlinks = []): string
 beforeEach(function () {
     $this->unpacker = new BundleUnpacker;
     $this->project = Project::factory()->create();
-    $this->page = Asset::factory()->for($this->project)->html()->create(['bundle_path' => null, 'entry_file' => null]);
+    $this->page = Artifact::factory()->for($this->project)->html()->create(['bundle_path' => null, 'entry_file' => null]);
 });
 
 it('unpacks a bundle and auto-detects index.html', function () {
     $zip = makeZip([
         'index.html' => '<h1>Mock</h1>',
-        'assets/app.css' => 'body{}',
+        'artifacts/app.css' => 'body{}',
     ]);
 
     $result = $this->unpacker->unpack($zip, $this->project, $this->page);
@@ -50,7 +50,7 @@ it('unpacks a bundle and auto-detects index.html', function () {
 
     $dir = config('atelier.sandbox.path').'/'.$result['bundle_path'];
     expect(File::exists($dir.'/index.html'))->toBeTrue()
-        ->and(File::exists($dir.'/assets/app.css'))->toBeTrue();
+        ->and(File::exists($dir.'/artifacts/app.css'))->toBeTrue();
 });
 
 it('strips symlink entries', function () {

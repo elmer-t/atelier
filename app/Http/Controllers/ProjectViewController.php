@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Asset;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\MarkdownRenderer;
 use Illuminate\View\View;
@@ -10,19 +10,19 @@ use Illuminate\View\View;
 class ProjectViewController extends Controller
 {
     /**
-     * Render the project "stage": a sidebar of ordered stage assets plus the
-     * selected asset in the main area, and a separate downloads list. When no
-     * asset is given, the first stage asset (by sort order) is shown.
+     * Render the project "stage": a sidebar of ordered stage artifacts plus the
+     * selected artifact in the main area, and a separate downloads list. When no
+     * artifact is given, the first stage artifact (by sort order) is shown.
      * See docs/atelier.specs.md §7.1.
      */
-    public function show(Project $project, MarkdownRenderer $markdown, ?Asset $asset = null): View
+    public function show(Project $project, MarkdownRenderer $markdown, ?Artifact $artifact = null): View
     {
-        $project->load('assets');
+        $project->load('artifacts');
 
         // Download-only files never open in the stage.
-        abort_if($asset !== null && ! $asset->showsInStage(), 404);
+        abort_if($artifact !== null && ! $artifact->showsInStage(), 404);
 
-        $current = $asset ?? $project->assets->first(fn (Asset $a) => $a->showsInStage());
+        $current = $artifact ?? $project->artifacts->first(fn (Artifact $a) => $a->showsInStage());
 
         $renderedBody = $current?->isMarkdown()
             ? $markdown->render($current->body)
