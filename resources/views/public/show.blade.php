@@ -66,6 +66,8 @@
                 </div>
             @else
                 @include($current->type->stagePartial())
+
+                <livewire:public.artifact-comments :artifact="$current" :wire:key="'comments-'.$current->id" />
             @endif
         </main>
     </div>

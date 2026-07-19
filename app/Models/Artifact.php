@@ -7,9 +7,12 @@ use App\Enums\ArtifactPlacement;
 use App\Enums\ArtifactType;
 use Database\Factories\ArtifactFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property ArtifactType $type
  * @property ArtifactPlacement|null $placement
  * @property int $sort_order
- * @property string|null $body
+ * @property int|null $current_revision_id
  * @property string|null $bundle_path
  * @property string|null $entry_file
  * @property string|null $stored_path
@@ -28,13 +31,23 @@ use Illuminate\Support\Carbon;
  * @property int|null $size_bytes
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read string|null $body
  * @property-read Project $project
+ * @property-read ArtifactRevision|null $currentRevision
+ * @property-read Collection<int, ArtifactRevision> $revisions
  */
-#[Fillable(['title', 'type', 'placement', 'sort_order', 'body', 'bundle_path', 'entry_file', 'stored_path', 'original_filename', 'mime_type', 'size_bytes'])]
+#[Fillable(['title', 'type', 'placement', 'sort_order', 'bundle_path', 'entry_file', 'stored_path', 'original_filename', 'mime_type', 'size_bytes'])]
 class Artifact extends Model
 {
     /** @use HasFactory<ArtifactFactory> */
     use HasFactory;
+
+    /**
+     * Transient seed for the first Revision when an Artifact is built through a
+     * factory or test helper (never persisted; a column-backed body no longer
+     * exists). Application code writes Revisions explicitly via the writer.
+     */
+    public ?string $draftBody = null;
 
     /**
      * @return array<string, string>
@@ -53,6 +66,45 @@ class Artifact extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /**
+     * @return HasMany<Comment, $this>
+     */
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
+
+    /**
+     * The live Revision whose body is the current markdown content.
+     *
+     * @return BelongsTo<ArtifactRevision, $this>
+     */
+    public function currentRevision(): BelongsTo
+    {
+        return $this->belongsTo(ArtifactRevision::class, 'current_revision_id');
+    }
+
+    /**
+     * The full append-only Revision history, oldest to newest.
+     *
+     * @return HasMany<ArtifactRevision, $this>
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ArtifactRevision::class)->orderBy('id');
+    }
+
+    /**
+     * The live markdown body, read through the current Revision so existing
+     * render/edit call-sites keep reading `$artifact->body` unchanged (ADR-0005).
+     *
+     * @return Attribute<string|null, never>
+     */
+    protected function body(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->currentRevision?->body);
     }
 
     public function isMarkdown(): bool

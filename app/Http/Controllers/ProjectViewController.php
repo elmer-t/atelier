@@ -17,7 +17,7 @@ class ProjectViewController extends Controller
      */
     public function show(Project $project, MarkdownRenderer $markdown, ?Artifact $artifact = null): View
     {
-        $project->load('artifacts');
+        $project->load('artifacts.currentRevision');
 
         // Download-only files never open in the stage.
         abort_if($artifact !== null && ! $artifact->showsInStage(), 404);

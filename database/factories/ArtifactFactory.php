@@ -6,6 +6,7 @@ use App\Enums\ArtifactPlacement;
 use App\Enums\ArtifactType;
 use App\Models\Artifact;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -24,7 +25,6 @@ class ArtifactFactory extends Factory
             'type' => ArtifactType::Markdown,
             'placement' => null,
             'sort_order' => 0,
-            'body' => '# '.fake()->sentence()."\n\n".fake()->paragraph(),
             'bundle_path' => null,
             'entry_file' => null,
             'stored_path' => null,
@@ -34,13 +34,33 @@ class ArtifactFactory extends Factory
         ];
     }
 
+    /**
+     * Seed markdown content as Revision 1 (ADR-0005): decide the body while making,
+     * then append its first Revision after the row is created.
+     */
+    public function configure(): static
+    {
+        return $this
+            ->afterMaking(function (Artifact $artifact) {
+                if ($artifact->isMarkdown() && $artifact->draftBody === null) {
+                    $artifact->draftBody = '# '.fake()->sentence()."\n\n".fake()->paragraph();
+                }
+            })
+            ->afterCreating(function (Artifact $artifact) {
+                if ($artifact->isMarkdown() && $artifact->current_revision_id === null) {
+                    $this->seedRevision($artifact);
+                }
+            });
+    }
+
     public function markdown(?string $body = null): static
     {
         return $this->state(fn () => [
             'type' => ArtifactType::Markdown,
             'placement' => null,
-            'body' => $body ?? '# '.fake()->sentence(),
-        ]);
+        ])->afterMaking(function (Artifact $artifact) use ($body) {
+            $artifact->draftBody = $body ?? '# '.fake()->sentence();
+        });
     }
 
     public function html(): static
@@ -48,7 +68,6 @@ class ArtifactFactory extends Factory
         return $this->state(fn () => [
             'type' => ArtifactType::Html,
             'placement' => null,
-            'body' => null,
             'bundle_path' => fake()->regexify('[a-f0-9]{48}').'/'.fake()->numberBetween(1, 999),
             'entry_file' => 'index.html',
         ]);
@@ -64,7 +83,6 @@ class ArtifactFactory extends Factory
         return $this->state(fn () => [
             'type' => ArtifactType::File,
             'placement' => $placement,
-            'body' => null,
             'stored_path' => 'artifacts/'.fake()->uuid().'/'.$name,
             'original_filename' => $name,
             'mime_type' => 'image/png',
@@ -84,5 +102,25 @@ class ArtifactFactory extends Factory
             'original_filename' => $name,
             'mime_type' => 'application/zip',
         ]);
+    }
+
+    /**
+     * Establish the Artifact's first Revision from its drafted body. Attributed to
+     * the acting User when one exists, else any existing User, else a throwaway
+     * commenter — never a spurious Creator that could skew role-scoped queries.
+     */
+    private function seedRevision(Artifact $artifact): void
+    {
+        $authorId = auth()->id()
+            ?? User::query()->orderBy('id')->value('id')
+            ?? User::factory()->client()->create()->id;
+
+        $revision = $artifact->revisions()->create([
+            'body' => $artifact->draftBody ?? '',
+            'user_id' => $authorId,
+        ]);
+
+        $artifact->forceFill(['current_revision_id' => $revision->id])->save();
+        $artifact->setRelation('currentRevision', $revision);
     }
 }

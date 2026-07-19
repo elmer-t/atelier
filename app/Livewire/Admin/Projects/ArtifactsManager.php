@@ -5,8 +5,11 @@ namespace App\Livewire\Admin\Projects;
 use App\Enums\ArtifactPlacement;
 use App\Enums\ArtifactType;
 use App\Models\Artifact;
+use App\Models\ArtifactRevision;
 use App\Models\Project;
 use App\Services\BundleUnpacker;
+use App\Support\Artifacts\MarkdownRevisionWriter;
+use App\Support\LineDiffer;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -44,13 +47,62 @@ class ArtifactsManager extends Component
 
     public ?TemporaryUploadedFile $file = null;
 
+    /** Two Revision ids selected for comparison in the history view. */
+    public ?int $diffFromId = null;
+
+    public ?int $diffToId = null;
+
     /**
      * @return Collection<int, Artifact>
      */
     #[Computed]
     public function artifacts(): Collection
     {
-        return $this->project->artifacts()->get();
+        return $this->project->artifacts()->with('currentRevision')->get();
+    }
+
+    /**
+     * The Revision history of the markdown Artifact being edited, newest first.
+     *
+     * @return Collection<int, ArtifactRevision>
+     */
+    #[Computed]
+    public function revisions(): Collection
+    {
+        if ($this->editingArtifactId === null) {
+            return collect();
+        }
+
+        return $this->project->artifacts()
+            ->findOrFail($this->editingArtifactId)
+            ->revisions()
+            ->with('author')
+            ->get()
+            ->sortByDesc('id')
+            ->values();
+    }
+
+    /**
+     * The line diff between the two selected Revisions, added/removed/unchanged.
+     *
+     * @return list<array{type: string, value: string}>
+     */
+    #[Computed]
+    public function diff(): array
+    {
+        if ($this->diffFromId === null || $this->diffToId === null) {
+            return [];
+        }
+
+        $revisions = $this->revisions->keyBy('id');
+        $from = $revisions->get($this->diffFromId);
+        $to = $revisions->get($this->diffToId);
+
+        if ($from === null || $to === null) {
+            return [];
+        }
+
+        return app(LineDiffer::class)->diff($from->body, $to->body);
     }
 
     public function startCreate(string $type): void
@@ -85,16 +137,16 @@ class ArtifactsManager extends Component
         }
     }
 
-    public function save(BundleUnpacker $unpacker): void
+    public function save(BundleUnpacker $unpacker, MarkdownRevisionWriter $writer): void
     {
         match ($this->formType) {
             ArtifactType::Html->value => $this->saveHtml($unpacker),
             ArtifactType::File->value => $this->saveFile(),
-            default => $this->saveMarkdown(),
+            default => $this->saveMarkdown($writer),
         };
     }
 
-    protected function saveMarkdown(): void
+    protected function saveMarkdown(MarkdownRevisionWriter $writer): void
     {
         $this->validate([
             'artifactTitle' => ['required', 'string', 'max:255'],
@@ -103,21 +155,41 @@ class ArtifactsManager extends Component
         ]);
 
         // An uploaded .md file wins over the textarea when creating.
-        $body = $this->mdFile
+        $body = (string) ($this->mdFile
             ? file_get_contents($this->mdFile->getRealPath())
-            : $this->body;
+            : $this->body);
 
-        $artifact = $this->editingArtifactId
-            ? $this->project->artifacts()->findOrFail($this->editingArtifactId)
-            : $this->project->artifacts()->make(['type' => ArtifactType::Markdown, 'sort_order' => $this->nextSortOrder()]);
+        if ($this->editingArtifactId) {
+            $artifact = $this->project->artifacts()->findOrFail($this->editingArtifactId);
 
-        $artifact->fill([
-            'title' => $this->artifactTitle,
-            'type' => ArtifactType::Markdown,
-            'body' => $body,
-        ])->save();
+            // Renaming is metadata churn, not a content change — no Revision.
+            if ($artifact->title !== $this->artifactTitle) {
+                $artifact->update(['title' => $this->artifactTitle]);
+            }
+
+            $writer->update($artifact, $body, auth()->user());
+        } else {
+            $writer->create($this->project, $this->artifactTitle, $body, auth()->user(), $this->nextSortOrder());
+        }
 
         $this->finish(__('Markdown page saved.'));
+    }
+
+    /**
+     * Roll a markdown Artifact back to an older Revision by appending a copy of it
+     * as the new current Revision — history is never rewritten (ADR-0005).
+     */
+    public function restoreRevision(int $revisionId, MarkdownRevisionWriter $writer): void
+    {
+        $artifact = $this->project->artifacts()->findOrFail($this->editingArtifactId);
+        $revision = $artifact->revisions()->findOrFail($revisionId);
+
+        $writer->restore($artifact, $revision, auth()->user());
+
+        $this->body = (string) $artifact->body;
+        unset($this->revisions, $this->diff, $this->artifacts);
+
+        Flux::toast(variant: 'success', text: __('Revision restored.'));
     }
 
     protected function saveHtml(BundleUnpacker $unpacker): void
@@ -296,7 +368,7 @@ class ArtifactsManager extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file']);
+        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'diffFromId', 'diffToId']);
         $this->resetErrorBag();
     }
 
