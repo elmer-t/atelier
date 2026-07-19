@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use App\Enums\AssetOrigin;
-use App\Enums\AssetPlacement;
-use App\Enums\AssetType;
-use Database\Factories\AssetFactory;
+use App\Enums\ArtifactOrigin;
+use App\Enums\ArtifactPlacement;
+use App\Enums\ArtifactType;
+use Database\Factories\ArtifactFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,8 +16,8 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $project_id
  * @property string $title
- * @property AssetType $type
- * @property AssetPlacement|null $placement
+ * @property ArtifactType $type
+ * @property ArtifactPlacement|null $placement
  * @property int $sort_order
  * @property string|null $body
  * @property string|null $bundle_path
@@ -31,9 +31,9 @@ use Illuminate\Support\Carbon;
  * @property-read Project $project
  */
 #[Fillable(['title', 'type', 'placement', 'sort_order', 'body', 'bundle_path', 'entry_file', 'stored_path', 'original_filename', 'mime_type', 'size_bytes'])]
-class Asset extends Model
+class Artifact extends Model
 {
-    /** @use HasFactory<AssetFactory> */
+    /** @use HasFactory<ArtifactFactory> */
     use HasFactory;
 
     /**
@@ -42,8 +42,8 @@ class Asset extends Model
     protected function casts(): array
     {
         return [
-            'type' => AssetType::class,
-            'placement' => AssetPlacement::class,
+            'type' => ArtifactType::class,
+            'placement' => ArtifactPlacement::class,
         ];
     }
 
@@ -57,43 +57,43 @@ class Asset extends Model
 
     public function isMarkdown(): bool
     {
-        return $this->type === AssetType::Markdown;
+        return $this->type === ArtifactType::Markdown;
     }
 
     public function isHtml(): bool
     {
-        return $this->type === AssetType::Html;
+        return $this->type === ArtifactType::Html;
     }
 
     public function isFile(): bool
     {
-        return $this->type === AssetType::File;
+        return $this->type === ArtifactType::File;
     }
 
-    public function origin(): AssetOrigin
+    public function origin(): ArtifactOrigin
     {
         return $this->type->origin();
     }
 
     /**
-     * Whether this asset opens in the main stage (and appears in the page sidebar).
+     * Whether this artifact opens in the main stage (and appears in the page sidebar).
      * Markdown and HTML always stage; a File stages only when placed there.
      */
     public function showsInStage(): bool
     {
-        return ! $this->isFile() || $this->placement === AssetPlacement::Stage;
+        return ! $this->isFile() || $this->placement === ArtifactPlacement::Stage;
     }
 
     /**
-     * Whether this asset belongs in the downloads list (download-only Files).
+     * Whether this artifact belongs in the downloads list (download-only Files).
      */
     public function isDownload(): bool
     {
-        return $this->isFile() && $this->placement === AssetPlacement::Download;
+        return $this->isFile() && $this->placement === ArtifactPlacement::Download;
     }
 
     /**
-     * The full sandbox origin URL to this HTML asset's entry file, or null.
+     * The full sandbox origin URL to this HTML artifact's entry file, or null.
      */
     public function sandboxUrl(): ?string
     {

@@ -1,7 +1,7 @@
 <x-public.layout :title="$project->title">
     @php
-        $stageAssets = $project->assets->filter->showsInStage();
-        $downloads = $project->assets->filter->isDownload();
+        $stageArtifacts = $project->artifacts->filter->showsInStage();
+        $downloads = $project->artifacts->filter->isDownload();
     @endphp
 
     <div class="flex min-h-screen flex-col lg:flex-row">
@@ -14,14 +14,14 @@
                 <h1 class="mt-1 text-lg font-semibold tracking-tight">{{ $project->title }}</h1>
             </div>
 
-            @if ($stageAssets->isNotEmpty())
+            @if ($stageArtifacts->isNotEmpty())
                 <nav class="px-3 pb-4">
                     <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Pages</p>
                     <ul class="space-y-0.5">
-                        @foreach ($stageAssets as $asset)
-                            @php($active = $current && $asset->is($current))
+                        @foreach ($stageArtifacts as $artifact)
+                            @php($active = $current && $artifact->is($current))
                             <li>
-                                <a href="{{ route('project.asset', [$project, $asset]) }}"
+                                <a href="{{ route('project.artifact', [$project, $artifact]) }}"
                                    @class([
                                        'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition',
                                        'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => $active,
@@ -31,8 +31,8 @@
                                         'text-xs',
                                         'opacity-60' => $active,
                                         'text-zinc-400 dark:text-zinc-500' => ! $active,
-                                    ])>{{ $asset->isHtml() ? '◆' : ($asset->isFile() ? '▣' : '▤') }}</span>
-                                    <span class="truncate">{{ $asset->title }}</span>
+                                    ])>{{ $artifact->isHtml() ? '◆' : ($artifact->isFile() ? '▣' : '▤') }}</span>
+                                    <span class="truncate">{{ $artifact->title }}</span>
                                 </a>
                             </li>
                         @endforeach
@@ -44,11 +44,11 @@
                 <div class="border-t border-zinc-200 px-3 py-4 dark:border-zinc-800">
                     <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Downloads</p>
                     <ul class="space-y-0.5">
-                        @foreach ($downloads as $asset)
+                        @foreach ($downloads as $artifact)
                             <li>
-                                <a href="{{ route('project.asset.download', [$project, $asset]) }}"
+                                <a href="{{ route('project.artifact.download', [$project, $artifact]) }}"
                                    class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                    <span class="truncate">{{ $asset->original_filename ?? $asset->title }}</span>
+                                    <span class="truncate">{{ $artifact->original_filename ?? $artifact->title }}</span>
                                     <span class="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">↓</span>
                                 </a>
                             </li>

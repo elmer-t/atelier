@@ -1,7 +1,7 @@
 <div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
     <div class="mb-4 flex items-center justify-between">
         <div>
-            <flux:heading size="sm">Assets</flux:heading>
+            <flux:heading size="sm">Artifacts</flux:heading>
             <flux:subheading>Markdown, HTML mockups and files, in the order clients see them.</flux:subheading>
         </div>
         @unless ($showForm)
@@ -13,33 +13,33 @@
         @endunless
     </div>
 
-    {{-- Asset list --}}
-    @if ($this->assets->isEmpty())
-        <flux:text class="text-zinc-400">No assets yet.</flux:text>
+    {{-- Artifact list --}}
+    @if ($this->artifacts->isEmpty())
+        <flux:text class="text-zinc-400">No artifacts yet.</flux:text>
     @else
         <ul class="divide-y divide-zinc-100 dark:divide-zinc-800">
-            @foreach ($this->assets as $asset)
-                <li wire:key="asset-{{ $asset->id }}" class="flex items-center gap-3 py-2">
-                    <flux:badge size="sm" :color="$asset->isHtml() ? 'purple' : ($asset->isFile() ? 'blue' : 'zinc')">
-                        {{ $asset->type->label() }}
+            @foreach ($this->artifacts as $artifact)
+                <li wire:key="artifact-{{ $artifact->id }}" class="flex items-center gap-3 py-2">
+                    <flux:badge size="sm" :color="$artifact->isHtml() ? 'purple' : ($artifact->isFile() ? 'blue' : 'zinc')">
+                        {{ $artifact->type->label() }}
                     </flux:badge>
                     <div class="flex-1 truncate">
-                        <span class="truncate text-sm">{{ $asset->title }}</span>
-                        @if ($asset->isFile())
+                        <span class="truncate text-sm">{{ $artifact->title }}</span>
+                        @if ($artifact->isFile())
                             <span class="ml-1 text-xs text-zinc-400">
-                                · {{ $asset->isDownload() ? 'download' : 'in stage' }}
+                                · {{ $artifact->isDownload() ? 'download' : 'in stage' }}
                             </span>
                         @endif
                     </div>
                     <div class="flex items-center gap-0.5">
                         <flux:button size="xs" variant="ghost" icon="chevron-up"
-                            wire:click="moveUp({{ $asset->id }})" :disabled="$loop->first" />
+                            wire:click="moveUp({{ $artifact->id }})" :disabled="$loop->first" />
                         <flux:button size="xs" variant="ghost" icon="chevron-down"
-                            wire:click="moveDown({{ $asset->id }})" :disabled="$loop->last" />
-                        <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEdit({{ $asset->id }})" />
+                            wire:click="moveDown({{ $artifact->id }})" :disabled="$loop->last" />
+                        <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEdit({{ $artifact->id }})" />
                         <flux:button size="xs" variant="ghost" icon="trash"
-                            wire:click="deleteAsset({{ $asset->id }})"
-                            wire:confirm="Delete this asset?" />
+                            wire:click="deleteArtifact({{ $artifact->id }})"
+                            wire:confirm="Delete this artifact?" />
                     </div>
                 </li>
             @endforeach
@@ -51,11 +51,11 @@
         <div class="mt-5 border-t border-zinc-200 pt-5 dark:border-zinc-700">
             <form wire:submit="save" class="space-y-4">
                 <flux:heading size="sm">
-                    {{ $editingAssetId ? 'Edit' : 'New' }}
+                    {{ $editingArtifactId ? 'Edit' : 'New' }}
                     {{ $formType === 'html' ? 'HTML page' : ($formType === 'file' ? 'file' : 'markdown page') }}
                 </flux:heading>
 
-                <flux:input wire:model="assetTitle" label="Title" placeholder="Design brief" />
+                <flux:input wire:model="artifactTitle" label="Title" placeholder="Design brief" />
 
                 @if ($formType === 'markdown')
                     <flux:textarea wire:model="body" label="Markdown" rows="12" class="font-mono text-sm"
@@ -71,12 +71,12 @@
                         <flux:text size="sm" class="mt-1 text-zinc-400">Appends a markdown image reference to the body.</flux:text>
                     </div>
 
-                    @unless ($editingAssetId)
+                    @unless ($editingArtifactId)
                         <flux:input type="file" wire:model="mdFile" label="…or upload a .md file" accept=".md,.markdown,.txt" />
                         <flux:error name="mdFile" />
                     @endunless
                 @elseif ($formType === 'html')
-                    @if ($editingAssetId)
+                    @if ($editingArtifactId)
                         <flux:callout icon="information-circle" variant="secondary">
                             <flux:callout.text>Upload a new zip to replace the current bundle, or leave empty to keep it.</flux:callout.text>
                         </flux:callout>
@@ -90,7 +90,7 @@
                         <flux:text size="sm" class="text-zinc-400">Uploading &amp; unpacking…</flux:text>
                     </div>
                 @else
-                    @if ($editingAssetId)
+                    @if ($editingArtifactId)
                         <flux:callout icon="information-circle" variant="secondary">
                             <flux:callout.text>Upload a new file to replace the current one, or leave empty to keep it.</flux:callout.text>
                         </flux:callout>

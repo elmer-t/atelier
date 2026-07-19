@@ -18,7 +18,7 @@ class PublicIndexController extends Controller
         $projects = Project::query()
             ->where('status', ProjectStatus::Active)
             ->where('visibility', ProjectVisibility::Public)
-            ->withCount('assets')
+            ->withCount('artifacts')
             ->latest()
             ->get();
 

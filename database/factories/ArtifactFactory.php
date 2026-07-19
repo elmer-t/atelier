@@ -2,16 +2,16 @@
 
 namespace Database\Factories;
 
-use App\Enums\AssetPlacement;
-use App\Enums\AssetType;
-use App\Models\Asset;
+use App\Enums\ArtifactPlacement;
+use App\Enums\ArtifactType;
+use App\Models\Artifact;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Asset>
+ * @extends Factory<Artifact>
  */
-class AssetFactory extends Factory
+class ArtifactFactory extends Factory
 {
     /**
      * @return array<string, mixed>
@@ -21,7 +21,7 @@ class AssetFactory extends Factory
         return [
             'project_id' => Project::factory(),
             'title' => fake()->sentence(3),
-            'type' => AssetType::Markdown,
+            'type' => ArtifactType::Markdown,
             'placement' => null,
             'sort_order' => 0,
             'body' => '# '.fake()->sentence()."\n\n".fake()->paragraph(),
@@ -37,7 +37,7 @@ class AssetFactory extends Factory
     public function markdown(?string $body = null): static
     {
         return $this->state(fn () => [
-            'type' => AssetType::Markdown,
+            'type' => ArtifactType::Markdown,
             'placement' => null,
             'body' => $body ?? '# '.fake()->sentence(),
         ]);
@@ -46,7 +46,7 @@ class AssetFactory extends Factory
     public function html(): static
     {
         return $this->state(fn () => [
-            'type' => AssetType::Html,
+            'type' => ArtifactType::Html,
             'placement' => null,
             'body' => null,
             'bundle_path' => fake()->regexify('[a-f0-9]{48}').'/'.fake()->numberBetween(1, 999),
@@ -55,17 +55,17 @@ class AssetFactory extends Factory
     }
 
     /**
-     * A staged file asset (renders in the stage) — an image by default.
+     * A staged file artifact (renders in the stage) — an image by default.
      */
-    public function file(AssetPlacement $placement = AssetPlacement::Stage): static
+    public function file(ArtifactPlacement $placement = ArtifactPlacement::Stage): static
     {
         $name = fake()->slug(2).'.png';
 
         return $this->state(fn () => [
-            'type' => AssetType::File,
+            'type' => ArtifactType::File,
             'placement' => $placement,
             'body' => null,
-            'stored_path' => 'assets/'.fake()->uuid().'/'.$name,
+            'stored_path' => 'artifacts/'.fake()->uuid().'/'.$name,
             'original_filename' => $name,
             'mime_type' => 'image/png',
             'size_bytes' => fake()->numberBetween(1000, 5_000_000),
@@ -73,14 +73,14 @@ class AssetFactory extends Factory
     }
 
     /**
-     * A download-only file asset (e.g. a PDF shown only in the downloads list).
+     * A download-only file artifact (e.g. a PDF shown only in the downloads list).
      */
     public function download(): static
     {
         $name = fake()->slug(2).'.zip';
 
-        return $this->file(AssetPlacement::Download)->state(fn () => [
-            'stored_path' => 'assets/'.fake()->uuid().'/'.$name,
+        return $this->file(ArtifactPlacement::Download)->state(fn () => [
+            'stored_path' => 'artifacts/'.fake()->uuid().'/'.$name,
             'original_filename' => $name,
             'mime_type' => 'application/zip',
         ]);

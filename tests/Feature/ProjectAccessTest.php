@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\Asset;
+use App\Models\Artifact;
 use App\Models\Project;
 
 it('lists only active public projects on the index', function () {
@@ -17,7 +17,7 @@ it('lists only active public projects on the index', function () {
 
 it('opens a public project without a password', function () {
     $project = Project::factory()->public()->create();
-    Asset::factory()->for($project)->markdown('# Hello world')->create(['title' => 'Brief']);
+    Artifact::factory()->for($project)->markdown('# Hello world')->create(['title' => 'Brief']);
 
     $this->get(route('project.show', $project))
         ->assertOk()
@@ -44,7 +44,7 @@ it('rejects an incorrect password', function () {
 
 it('unlocks a private project with the correct password and persists the session', function () {
     $project = Project::factory()->private('letmein')->create();
-    Asset::factory()->for($project)->markdown('# Confidential brief')->create();
+    Artifact::factory()->for($project)->markdown('# Confidential brief')->create();
 
     $this->post(route('project.unlock', $project), ['password' => 'letmein'])
         ->assertRedirect(route('project.show', $project));

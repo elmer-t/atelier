@@ -1,7 +1,7 @@
 # Atelier
 
 A single-operator tool for presenting in-progress website and application concepts to
-clients over shareable links. A project bundles an ordered list of assets; recipients view
+clients over shareable links. A project bundles an ordered list of artifacts; recipients view
 them in the browser and never log in.
 
 ## Language
@@ -45,40 +45,41 @@ _Avoid_: instance, workspace
 ### Content
 
 **Project**:
-The unit of sharing: a titled collection of assets presented under one shareable link, with
+The unit of sharing: a titled collection of artifacts presented under one shareable link, with
 its own visibility and access rules.
 _Avoid_: presentation, showcase, deck
 
-**Asset**:
-A single piece of content in a project — a markdown, HTML, or file asset. The one unified
-content entity, manually ordered among its siblings.
-_Avoid_: page, attachment, content item, resource
+**Artifact**:
+A single piece of content in a project — a markdown, HTML, or file artifact. The one unified
+content entity, manually ordered among its siblings. The term names the entity only; the
+leftover files an artifact leaves on disk are its "on-disk files", never "artifacts".
+_Avoid_: asset, page, attachment, content item, resource
 
-**Markdown asset**:
+**Markdown artifact**:
 Written content (specs, briefs) authored as raw markdown and rendered to sanitized HTML by
 the app at request time.
 
-**HTML asset**:
+**HTML artifact**:
 A self-contained HTML/CSS/JS showcase (mockup, prototype) uploaded as a zip and served from
 the sandbox as a bundle. Never calls the app back.
 
-**File asset**:
+**File artifact**:
 Any uploaded file (image, PDF, office document, zip, …) streamed to the browser as-is;
 Atelier never decodes its format. The browser renders it inline or downloads it.
 
 ### Presentation
 
 **Stage**:
-The main area of the project page where the selected asset renders, and the placement value
-for file assets that open there. Markdown and HTML assets always stage.
+The main area of the project page where the selected artifact renders, and the placement value
+for file artifacts that open there. Markdown and HTML artifacts always stage.
 _Avoid_: viewer (too generic; the audience is the Client), canvas
 
 **Placement**:
-For a file asset, whether it belongs on the stage or in downloads. Markdown and HTML assets
+For a file artifact, whether it belongs on the stage or in downloads. Markdown and HTML artifacts
 carry no placement — they always stage.
 
 **Download**:
-A file asset that only downloads and never opens on the stage; surfaced in the project's
+A file artifact that only downloads and never opens on the stage; surfaced in the project's
 separate downloads list.
 
 **Public index**:
@@ -88,8 +89,8 @@ never appear.
 ### Serving & isolation
 
 **Origin**:
-Where an asset is served from, which fixes its protection model. App-origin assets (markdown,
-file) are genuinely gated by the project session; sandbox-origin assets (HTML) are
+Where an artifact is served from, which fixes its protection model. App-origin artifacts (markdown,
+file) are genuinely gated by the project session; sandbox-origin artifacts (HTML) are
 obscurity-only.
 
 **Sandbox**:
@@ -97,7 +98,7 @@ The PHP-less, separate-subdomain static host that serves HTML bundles, isolating
 uploaded HTML/JS from the app's origin, cookies, and session.
 
 **Bundle**:
-The unpacked directory of an HTML asset — an entry file plus its relative assets — living in
+The unpacked directory of an HTML artifact — an entry file plus its relative files — living in
 sandbox storage.
 
 **Entry file**:
@@ -124,5 +125,5 @@ including the password gate, returns 404). Un-archiving restores access.
 
 **Project session**:
 The per-project flag remembering that a viewer passed the password gate, so the password is
-not re-checked per asset. Versioned, so rotating the password invalidates it.
+not re-checked per artifact. Versioned, so rotating the password invalidates it.
 _Avoid_: login (clients never log in)

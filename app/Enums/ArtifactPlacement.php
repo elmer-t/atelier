@@ -3,8 +3,8 @@
 namespace App\Enums;
 
 /**
- * Where a File asset appears in the project view. Markdown and HTML assets are
- * always staged; only File assets carry an explicit placement.
+ * Where a File artifact appears in the project view. Markdown and HTML artifacts are
+ * always staged; only File artifacts carry an explicit placement.
  *
  * - Stage: shown in the sidebar and rendered in the main stage (browser-native),
  *   with a download button. Default for browser-renderable files (images, PDFs).
@@ -12,7 +12,7 @@ namespace App\Enums;
  *
  * See docs/atelier.specs.md §7.1.
  */
-enum AssetPlacement: string
+enum ArtifactPlacement: string
 {
     case Stage = 'stage';
     case Download = 'download';

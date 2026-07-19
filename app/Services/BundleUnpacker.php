@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Asset;
+use App\Models\Artifact;
 use App\Models\Project;
 use Illuminate\Support\Facades\File;
 use RuntimeException;
@@ -21,17 +21,17 @@ class BundleUnpacker
     private const S_IFLNK = 0xA000;
 
     /**
-     * Unpack a zip into `<sandbox>/<sandbox_token>/<asset_id>/`, replacing any
-     * existing bundle for that asset.
+     * Unpack a zip into `<sandbox>/<sandbox_token>/<artifact_id>/`, replacing any
+     * existing bundle for that artifact.
      *
      * @param  string|null  $entryFile  Operator-specified entry file, relative to
      *                                  the bundle root. When null, an entry file
      *                                  is auto-detected (index.html preferred).
      * @return array{bundle_path: string, entry_file: string}
      */
-    public function unpack(string $zipPath, Project $project, Asset $asset, ?string $entryFile = null): array
+    public function unpack(string $zipPath, Project $project, Artifact $artifact, ?string $entryFile = null): array
     {
-        $relative = $project->sandbox_token.'/'.$asset->id;
+        $relative = $project->sandbox_token.'/'.$artifact->id;
         $destination = $this->sandboxRoot().'/'.$relative;
 
         $this->clearDirectory($destination);
@@ -58,15 +58,15 @@ class BundleUnpacker
     }
 
     /**
-     * Remove an asset's unpacked bundle from sandbox storage.
+     * Remove an artifact's unpacked bundle from sandbox storage.
      */
-    public function remove(Asset $asset): void
+    public function remove(Artifact $artifact): void
     {
-        if (blank($asset->bundle_path)) {
+        if (blank($artifact->bundle_path)) {
             return;
         }
 
-        $this->clearDirectory($this->sandboxRoot().'/'.$asset->bundle_path);
+        $this->clearDirectory($this->sandboxRoot().'/'.$artifact->bundle_path);
     }
 
     private function extractEntries(ZipArchive $zip, string $destination): void

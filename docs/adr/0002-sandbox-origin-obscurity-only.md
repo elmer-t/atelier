@@ -9,6 +9,6 @@ protection.
 The deliberately accepted consequence: the sandbox has **no password gate**. A private
 project's HTML bundle is protected only by an unguessable URL, so anyone who obtains that URL
 can view the bundle regardless of the project's visibility. Therefore confidential material
-must live in markdown or file assets (which are genuinely app-gated by the project session),
+must live in markdown or file artifacts (which are genuinely app-gated by the project session),
 never in HTML bundles. Truly gated HTML — via short-lived signed/expiring iframe URLs
 validated at the sandbox — is deferred until a requirement demands it.

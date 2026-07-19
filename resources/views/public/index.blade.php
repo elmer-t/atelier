@@ -24,7 +24,7 @@
                                 {{ $project->title }}
                             </h2>
                             <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $project->assets_count }} {{ Str::plural('asset', $project->assets_count) }}
+                                {{ $project->artifacts_count }} {{ Str::plural('artifact', $project->artifacts_count) }}
                             </p>
                         </a>
                     </li>
