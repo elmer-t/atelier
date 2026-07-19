@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', PublicIndexController::class)->name('home');
 
 Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'creator'])
     ->name('dashboard');
 
 Route::prefix('p/{project:slug}')->group(function () {
