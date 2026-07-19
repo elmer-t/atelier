@@ -13,22 +13,6 @@
         <flux:badge :color="$project->isActive() ? 'blue' : 'amber'">{{ ucfirst($project->status->value) }}</flux:badge>
     </div>
 
-    {{-- Shareable link --}}
-    <div class="mb-8 rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
-        <flux:heading size="sm">Shareable link</flux:heading>
-        <div class="mt-3 flex items-center gap-2">
-            <flux:input readonly value="{{ route('project.show', $project) }}" class="flex-1" />
-            <flux:button icon="clipboard"
-                x-on:click="navigator.clipboard.writeText('{{ route('project.show', $project) }}'); $flux.toast('Link copied')">
-                Copy
-            </flux:button>
-            <flux:button icon="arrow-path" variant="subtle" wire:click="regenerateSlug"
-                wire:confirm="Generate a new link? The current link will stop working immediately.">
-                Regenerate
-            </flux:button>
-        </div>
-    </div>
-
     {{-- Settings --}}
     <div class="mb-8 rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
         <form wire:submit="saveSettings" class="space-y-6">
@@ -36,28 +20,50 @@
 
             <flux:input wire:model="title" label="Title" />
 
-            <flux:radio.group wire:model.live="visibility" label="Visibility" variant="segmented">
-                <flux:radio value="private" label="Private" />
-                <flux:radio value="public" label="Public" />
-            </flux:radio.group>
+            {{-- Shareable link --}}
+            <flux:field>
+                <flux:label>Shareable link</flux:label>
+                <div class="flex items-center gap-2" x-data="{
+                    link: @js(route('project.show', $project)),
+                    async copy() {
+                        {{-- navigator.clipboard is undefined outside a secure context (e.g. http://*.test). --}}
+                        try {
+                            if (window.isSecureContext && navigator.clipboard) {
+                                await navigator.clipboard.writeText(this.link);
+                            } else {
+                                this.$refs.link.select();
+                                document.execCommand('copy');
+                            }
+                            $flux.toast('Link copied');
+                        } catch (e) {
+                            $flux.toast({ variant: 'danger', text: 'Could not copy. Select the link and copy manually.' });
+                        }
+                    },
+                }">
+                    <flux:input x-ref="link" readonly value="{{ route('project.show', $project) }}" class="flex-1" />
+                    <flux:button icon="clipboard" x-on:click="copy">
+                        Copy
+                    </flux:button>
+                    <flux:button icon="arrow-path" variant="subtle" wire:click="regenerateSlug"
+                        wire:confirm="Generate a new link? The current link will stop working immediately.">
+                        Regenerate
+                    </flux:button>
+                </div>
+            </flux:field>
 
-            @if ($visibility === 'private')
-                <flux:input type="password" wire:model="newPassword"
+            <flux:switch wire:model="isPublic" label="Public" class="atelier-switch-lg"
+                description="Anyone with the link can view, and the project is listed on the public index." />
+
+            {{-- Stays in the layout when public so toggling never reflows the form. --}}
+            <div x-bind:class="$wire.isPublic && 'opacity-50'" class="transition-opacity">
+                <flux:input type="password" wire:model="newPassword" x-bind:disabled="$wire.isPublic"
                     label="{{ $project->password_hash ? 'Rotate password' : 'Set password' }}"
                     description="{{ $project->password_hash ? 'Leave blank to keep the current password. Rotating signs out existing viewers.' : 'Required for a private project.' }}"
                     placeholder="••••••••" />
-            @else
-                <flux:callout icon="information-circle" variant="secondary">
-                    <flux:callout.text>
-                        Public projects are open to anyone with the link and listed on the public index. No password.
-                    </flux:callout.text>
-                </flux:callout>
-            @endif
+            </div>
 
-            <flux:radio.group wire:model="status" label="Status" variant="segmented">
-                <flux:radio value="active" label="Active" />
-                <flux:radio value="archived" label="Archived" />
-            </flux:radio.group>
+            <flux:switch wire:model="isArchived" label="Archived" class="atelier-switch-lg"
+                description="Archived projects stay reachable by link but are hidden from the public index." />
 
             <div class="flex justify-end">
                 <flux:button type="submit" variant="primary">Save settings</flux:button>

@@ -65,6 +65,15 @@ select:focus[data-flux-control] {
     @apply size-4;
 } */
 
+/*
+ * Flux's switch has no size prop and hardcodes its track, indicator, and
+ * checked-position offsets. `zoom` scales all three together and, unlike
+ * `transform: scale()`, still occupies the larger box in layout.
+ */
+[data-flux-switch].atelier-switch-lg {
+    zoom: 1.5;
+}
+
 /* Rendered markdown page bodies (public stage). */
 .atelier-prose {
     @apply text-zinc-700 leading-relaxed dark:text-zinc-300;

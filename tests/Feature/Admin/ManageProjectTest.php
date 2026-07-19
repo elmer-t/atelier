@@ -76,6 +76,47 @@ it('sets a password and verifies it', function () {
     expect($project->refresh()->checkPassword('hunter2'))->toBeTrue();
 });
 
+it('mounts the toggles from the project state', function () {
+    $project = Project::factory()->public()->create(['status' => 'archived']);
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->assertSet('isPublic', true)
+        ->assertSet('isArchived', true);
+});
+
+it('saves visibility and status from the toggles', function () {
+    $project = Project::factory()->private('secret')->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('isPublic', true)
+        ->set('isArchived', true)
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->isPublic())->toBeTrue()
+        ->and($project->isArchived())->toBeTrue()
+        ->and($project->password_hash)->toBeNull();
+});
+
+it('requires a password when the visibility toggle is switched to private', function () {
+    $project = Project::factory()->public()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('isPublic', false)
+        ->call('saveSettings')
+        ->assertHasErrors('newPassword');
+
+    expect($project->refresh()->isPublic())->toBeTrue();
+});
+
+it('keeps the password field in the markup for public projects', function () {
+    $project = Project::factory()->public()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->assertSee('Set password')
+        ->assertSee('x-bind:disabled="$wire.isPublic"', escape: false);
+});
+
 it('regenerates the shareable slug', function () {
     $project = Project::factory()->create();
     $old = $project->slug;

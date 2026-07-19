@@ -24,12 +24,31 @@ class Manage extends Component
 
     public string $newPassword = '';
 
+    /**
+     * Toggle-friendly views of $visibility and $status, which stay canonical.
+     */
+    public bool $isPublic = false;
+
+    public bool $isArchived = false;
+
     public function mount(Project $project): void
     {
         $this->project = $project;
         $this->title = $project->title;
         $this->visibility = $project->visibility->value;
         $this->status = $project->status->value;
+        $this->isPublic = $project->isPublic();
+        $this->isArchived = $project->isArchived();
+    }
+
+    public function updatedIsPublic(bool $value): void
+    {
+        $this->visibility = $value ? ProjectVisibility::Public->value : ProjectVisibility::Private->value;
+    }
+
+    public function updatedIsArchived(bool $value): void
+    {
+        $this->status = $value ? ProjectStatus::Archived->value : ProjectStatus::Active->value;
     }
 
     public function saveSettings(): void
