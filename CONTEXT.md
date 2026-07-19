@@ -21,8 +21,9 @@ _Avoid_: operator, admin, owner, author
 
 **Client**:
 The party a Creator shares a project with for review. A business-relationship role,
-independent of whether the Client holds a User account — today they open a link and never
-log in; in future they may authenticate to comment (#3).
+independent of whether the Client holds a User account: a Client who only views never does,
+while one who comments becomes a User (acquiring the Client role on a User account) so the
+comment is attributable (#3).
 _Avoid_: viewer, recipient, guest
 
 **Organization**:
@@ -38,8 +39,9 @@ Creator-side concept. Self-hosted today, the whole installation is a single impl
 which is why the term is otherwise invisible.
 _Avoid_: instance, workspace
 
-<!-- Whether a Client is modelled as a role of User or a distinct entity is a data-model
-     decision for #3, deliberately kept out of this glossary (which stays implementation-free). -->
+<!-- How a commenting Client's identity is realised (a passwordless User, upgradeable) is a
+     data-model decision recorded in ADR-0003, kept out of this glossary (which stays
+     implementation-free). -->
 
 
 ### Content
@@ -84,6 +86,33 @@ separate downloads list.
 **Public index**:
 The app's root page listing every active, public project. Private and archived projects
 never appear.
+
+### Feedback
+
+**Comment**:
+A piece of feedback left on an Artifact, attached to a specific spot on it and attributed to
+the name its author gave. Left by a Client or the Creator.
+_Avoid_: note, annotation, remark
+
+**Anchor**:
+The specific spot on an Artifact a Comment marks — a passage of a markdown Artifact, a region
+of an image or PDF, or a point on an HTML mockup. Every top-level Comment has one.
+_Avoid_: pin, marker, location
+
+**Thread**:
+A top-level Comment together with its Replies, all sharing the one Anchor. The unit that is
+Resolved.
+_Avoid_: conversation, discussion
+
+**Reply**:
+A Comment made in response to another within its Thread. Carries no Anchor of its own and is
+never itself replied to — threads are one level deep.
+_Avoid_: response, answer
+
+**Resolved**:
+The state of a Thread the Creator has marked as handled, closing the feedback loop. Reversible,
+and only the Creator sets it.
+_Avoid_: closed, done, archived
 
 ### Serving & isolation
 
