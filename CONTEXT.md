@@ -25,9 +25,21 @@ independent of whether the Client holds a User account — today they open a lin
 log in; in future they may authenticate to comment (#3).
 _Avoid_: viewer, recipient, guest
 
-<!-- Organization / company and tenant: grouping and isolation terms, still being resolved
-     in this session (see #4, #8). Role-vs-entity modeling of Client is a data-model decision
-     for #3, deliberately kept out of this glossary. -->
+**Organization**:
+A grouping of Clients within a single Tenant — a client company or team whose members share
+visibility of that Tenant's projects (#4). An audience-side concept: it groups Clients, it
+never spans Tenants.
+_Avoid_: company, account
+
+**Tenant**:
+The isolation boundary of a hosted (SaaS) Atelier — one subscriber's private world of
+Creator(s), projects, Clients, and styling, sealed off from every other subscriber's. A
+Creator-side concept. Self-hosted today, the whole installation is a single implicit Tenant,
+which is why the term is otherwise invisible.
+_Avoid_: instance, workspace
+
+<!-- Whether a Client is modelled as a role of User or a distinct entity is a data-model
+     decision for #3, deliberately kept out of this glossary (which stays implementation-free). -->
 
 
 ### Content
