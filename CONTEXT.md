@@ -43,6 +43,13 @@ _Avoid_: instance, workspace
      data-model decision recorded in ADR-0003, kept out of this glossary (which stays
      implementation-free). -->
 
+**Agent**:
+An AI program that reads and writes artifacts on the Creator's behalf — not a party or a User,
+but a _mode of access_. Everything an Agent does is attributed to the Creator whose credential
+it carries; it holds no identity of its own. Since most artifacts are Agent-authored, the Agent
+is a first-class producer and consumer of content, not an afterthought.
+_Avoid_: bot, integration, service account (all imply a separate identity), API client
+
 
 ### Content
 
