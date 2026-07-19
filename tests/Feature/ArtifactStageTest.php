@@ -4,6 +4,8 @@ use App\Enums\ArtifactOrigin;
 use App\Enums\ArtifactPlacement;
 use App\Models\Artifact;
 use App\Models\Project;
+use App\Models\User;
+use App\Support\Artifacts\MarkdownRevisionWriter;
 
 it('renders a markdown artifact in the stage', function () {
     $project = Project::factory()->public()->create();
@@ -56,4 +58,17 @@ it('defaults file placement from the mime type', function () {
         ->and(ArtifactPlacement::defaultForMime('application/pdf'))->toBe(ArtifactPlacement::Stage)
         ->and(ArtifactPlacement::defaultForMime('application/zip'))->toBe(ArtifactPlacement::Download)
         ->and(ArtifactPlacement::defaultForMime(null))->toBe(ArtifactPlacement::Download);
+});
+
+it('renders the latest Revision of a markdown artifact on the shared page', function () {
+    $project = Project::factory()->public()->create();
+    $author = User::factory()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Old heading')->create(['title' => 'Brief']);
+
+    app(MarkdownRevisionWriter::class)->update($artifact, '# New heading', $author);
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertSee('New heading')
+        ->assertDontSee('Old heading');
 });

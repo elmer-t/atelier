@@ -2,6 +2,7 @@
 
 use App\Enums\ArtifactPlacement;
 use App\Livewire\Admin\Projects\ArtifactsManager;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -9,7 +10,8 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->creator = User::factory()->create();
+    $this->actingAs($this->creator);
     $this->project = Project::factory()->create();
 });
 
@@ -111,4 +113,105 @@ it('deletes an artifact and its stored file', function () {
 
     expect($this->project->artifacts()->count())->toBe(0);
     Storage::disk('local')->assertMissing($path);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Markdown Revisions (#15)
+|--------------------------------------------------------------------------
+*/
+
+it('creates a markdown artifact establishing Revision 1 attributed to the acting user', function () {
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startCreate', 'markdown')
+        ->set('artifactTitle', 'Brief')
+        ->set('body', '# One')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $artifact = $this->project->artifacts()->firstOrFail();
+    expect($artifact->revisions()->count())->toBe(1)
+        ->and($artifact->body)->toBe('# One')
+        ->and($artifact->currentRevision->user_id)->toBe($this->creator->id);
+});
+
+it('appends a Revision on edit and makes it the current content', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertSet('body', '# One')
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $artifact->refresh();
+    expect($artifact->revisions()->count())->toBe(2)
+        ->and($artifact->body)->toBe('# Two')
+        ->and($artifact->currentRevision->user_id)->toBe($this->creator->id);
+});
+
+it('treats a byte-identical save as a no-op', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# Same')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Same')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($artifact->refresh()->revisions()->count())->toBe(1);
+});
+
+it('renames a markdown artifact without appending a Revision', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# Body')->create(['title' => 'Old']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('artifactTitle', 'New Title')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $artifact->refresh();
+    expect($artifact->title)->toBe('New Title')
+        ->and($artifact->revisions()->count())->toBe(1);
+});
+
+it('restores an older Revision by appending a copy-forward, deleting nothing', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    $firstRevisionId = $artifact->revisions()->firstOrFail()->id;
+
+    $component = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')->call('save')
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Three')->call('save');
+
+    expect($artifact->refresh()->revisions()->count())->toBe(3);
+
+    $component->call('startEdit', $artifact->id)
+        ->call('restoreRevision', $firstRevisionId)
+        ->assertHasNoErrors();
+
+    $artifact->refresh();
+    expect($artifact->revisions()->count())->toBe(4)
+        ->and($artifact->body)->toBe('# One')
+        // Nothing was deleted — the original three Revisions still exist.
+        ->and($artifact->revisions()->whereKey($firstRevisionId)->exists())->toBeTrue();
+});
+
+it('produces a line diff between two Revisions', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown("line a\nline b")->create();
+    $first = $artifact->revisions()->firstOrFail()->id;
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', "line a\nline c")->call('save')
+        ->call('startEdit', $artifact->id)
+        ->tap(function ($c) use ($artifact, $first) {
+            $latest = $artifact->fresh()->currentRevision->id;
+            $c->set('diffFromId', $first)->set('diffToId', $latest)
+                ->assertSee('- line b')
+                ->assertSee('+ line c');
+        });
 });
