@@ -60,7 +60,14 @@ _Avoid_: asset, page, attachment, content item, resource
 
 **Markdown artifact**:
 Written content (specs, briefs) authored as raw markdown and rendered to sanitized HTML by
-the app at request time.
+the app at request time. Its content is versioned as Revisions (#6).
+
+**Revision**:
+One immutable saved state of a markdown Artifact's content. Each editor save appends a
+Revision; the text a Client sees is always the latest one. Restoring an older Revision appends
+a new one equal to it — the history is append-only, never rewritten or pruned, and attributed
+to the User who saved it. A Creator-side authoring concern, invisible to Clients.
+_Avoid_: version, snapshot, edit
 
 **HTML artifact**:
 A self-contained HTML/CSS/JS showcase (mockup, prototype) uploaded as a zip and served from
@@ -98,7 +105,9 @@ _Avoid_: note, annotation, remark
 
 **Anchor**:
 The specific spot on an Artifact a Comment marks — a passage of a markdown Artifact, a region
-of an image or PDF, or a point on an HTML mockup. Every top-level Comment has one.
+of an image or PDF, or a point on an HTML mockup. Every top-level Comment has one. On a markdown
+Artifact an Anchor is scoped to the Revision it was placed against, so it keeps pointing at the
+exact text after later edits (#6).
 _Avoid_: pin, marker, location
 
 **Thread**:
