@@ -44,11 +44,13 @@ _Avoid_: instance, workspace
      implementation-free). -->
 
 **Agent**:
-An AI program that reads and writes artifacts on the Creator's behalf — not a party or a User,
-but a _mode of access_. Everything an Agent does is attributed to the Creator whose credential
-it carries; it holds no identity of its own. Since most artifacts are Agent-authored, the Agent
-is a first-class producer and consumer of content, not an afterthought.
-_Avoid_: bot, integration, service account (all imply a separate identity), API client
+A non-human User that reads and writes artifacts on the Creator's behalf. It holds its own
+distinct identity — a dedicated User — so its edits are attributed to _it_, which is exactly how
+human and Agent changes are told apart in an Artifact's Revision history (#15). It operates
+within the Creator's projects but is never the Creator. Since most artifacts are Agent-authored,
+the Agent is a first-class producer and consumer of content, not an afterthought.
+_Avoid_: bot, integration, API client; and "acts as the Creator" (it acts _for_ the Creator
+under its own identity, not _as_ them)
 
 
 ### Content
@@ -119,8 +121,8 @@ _Avoid_: response, answer
 
 **Resolved**:
 The state of a Thread the Creator has marked as handled, closing the feedback loop. Reversible,
-and only the human Creator sets it — an Agent, though it acts as the Creator, may reply to a
-Thread but never Resolve it, so a human eye always gates the loop.
+and only the human Creator sets it — an Agent (a non-human User) may reply to a Thread but
+never Resolve it, so a human eye always gates the loop.
 _Avoid_: closed, done, archived
 
 ### Serving & isolation
