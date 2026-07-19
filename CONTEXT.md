@@ -6,14 +6,41 @@ them in the browser and never log in.
 
 ## Language
 
-### People — unresolved (see issue #8)
+### People
 
-The vocabulary for the people in the system is **deliberately not yet canonicalised**. The
-terms overlap and their relationships are still being worked out: the admin/operator who runs
-the installation, the client/viewer who receives a link, and the future users, tenants, and
-organizations that come with client accounts and multi-tenancy. Left out of the glossary
-until a dedicated `/wayfinder` session resolves it — tracked in issue #8. Do not canonicalise
-these terms ad hoc in the meantime.
+**User**:
+Any human with an authenticated login. A pure authentication concept — the roles a User
+plays (Creator, Client) layer on top, so the term absorbs new roles without redefinition.
+Today the sole User is the Creator.
+
+**Creator**:
+The role of a User who builds and presents projects — a developer, designer, or PM
+showcasing concepts and gathering feedback. Administers the Atelier account (today, the
+single-install operator).
+_Avoid_: operator, admin, owner, author
+
+**Client**:
+The party a Creator shares a project with for review. A business-relationship role,
+independent of whether the Client holds a User account — today they open a link and never
+log in; in future they may authenticate to comment (#3).
+_Avoid_: viewer, recipient, guest
+
+**Organization**:
+A grouping of Clients within a single Tenant — a client company or team whose members share
+visibility of that Tenant's projects (#4). An audience-side concept: it groups Clients, it
+never spans Tenants.
+_Avoid_: company, account
+
+**Tenant**:
+The isolation boundary of a hosted (SaaS) Atelier — one subscriber's private world of
+Creator(s), projects, Clients, and styling, sealed off from every other subscriber's. A
+Creator-side concept. Self-hosted today, the whole installation is a single implicit Tenant,
+which is why the term is otherwise invisible.
+_Avoid_: instance, workspace
+
+<!-- Whether a Client is modelled as a role of User or a distinct entity is a data-model
+     decision for #3, deliberately kept out of this glossary (which stays implementation-free). -->
+
 
 ### Content
 
@@ -44,7 +71,7 @@ Atelier never decodes its format. The browser renders it inline or downloads it.
 **Stage**:
 The main area of the project page where the selected asset renders, and the placement value
 for file assets that open there. Markdown and HTML assets always stage.
-_Avoid_: viewer (that surface is the stage; a Viewer is a person), canvas
+_Avoid_: viewer (too generic; the audience is the Client), canvas
 
 **Placement**:
 For a file asset, whether it belongs on the stage or in downloads. Markdown and HTML assets
@@ -98,4 +125,4 @@ including the password gate, returns 404). Un-archiving restores access.
 **Project session**:
 The per-project flag remembering that a viewer passed the password gate, so the password is
 not re-checked per asset. Versioned, so rotating the password invalidates it.
-_Avoid_: login (viewers never log in)
+_Avoid_: login (clients never log in)
