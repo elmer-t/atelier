@@ -161,7 +161,11 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registration is intentionally disabled: Atelier is a single-operator
+        // tool and the `role` column defaults to Creator, so an open sign-up
+        // route would let anyone provision a full operator account. Operators are
+        // seeded / created out-of-band. See docs/atelier.specs.md §2, §8.
+        // Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([
