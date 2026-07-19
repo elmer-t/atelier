@@ -56,6 +56,10 @@
                     </ul>
                 </div>
             @endif
+
+            <div class="px-6 py-4 text-xs text-zinc-400 dark:text-zinc-500">
+                <a href="{{ route('privacy') }}" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">Privacy Policy</a>
+            </div>
         </aside>
 
         {{-- Main stage --}}

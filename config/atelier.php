@@ -34,4 +34,26 @@ return [
     'slug_bytes' => 24,
     'sandbox_token_bytes' => 24,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Data protection (GDPR / ePrivacy)
+    |--------------------------------------------------------------------------
+    |
+    | The privacy posture for the client PII Atelier captures at comment time
+    | (name + email, ADR-0003) and the persistent `atelier_commenter` cookie.
+    | `contact_email` is where data-subject requests are sent; `retention` is
+    | the plain-language retention statement shown on the privacy policy.
+    |
+    | See docs/atelier.specs.md §13 (data protection) and the privacy policy.
+    |
+    */
+
+    'privacy' => [
+        'contact_email' => env('ATELIER_PRIVACY_CONTACT', 'privacy@redheadit.nl'),
+        'retention' => env(
+            'ATELIER_PRIVACY_RETENTION',
+            'for as long as the project is active; erased on request or when the project is deleted.',
+        ),
+    ],
+
 ];

@@ -267,7 +267,11 @@
                 <div class="mt-3">
                     <flux:button size="sm" variant="primary" wire:click="saveIdentity">Continue</flux:button>
                 </div>
-                <flux:text size="sm" class="mt-2 text-zinc-400">Your email is never shown to others.</flux:text>
+                <flux:text size="sm" class="mt-2 text-zinc-400">
+                    We use your name and email only to attribute your feedback; your email is never shown to others.
+                    We’ll remember you on this device with a cookie so you don’t have to re-enter your details.
+                    See our <a href="{{ route('privacy') }}" target="_blank" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">Privacy Policy</a>.
+                </flux:text>
             </div>
         @else
             {{-- Composer --}}
