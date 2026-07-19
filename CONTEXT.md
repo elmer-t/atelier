@@ -44,6 +44,15 @@ _Avoid_: instance, workspace
      data-model decision recorded in ADR-0003, kept out of this glossary (which stays
      implementation-free). -->
 
+**Agent**:
+A non-human User that reads and writes artifacts on the Creator's behalf. It holds its own
+distinct identity — a dedicated User — so its edits are attributed to _it_, which is exactly how
+human and Agent changes are told apart in an Artifact's Revision history (#15). It operates
+within the Creator's projects but is never the Creator. Since most artifacts are Agent-authored,
+the Agent is a first-class producer and consumer of content, not an afterthought.
+_Avoid_: bot, integration, API client; and "acts as the Creator" (it acts _for_ the Creator
+under its own identity, not _as_ them)
+
 
 ### Content
 
@@ -122,8 +131,17 @@ _Avoid_: response, answer
 
 **Resolved**:
 The state of a Thread the Creator has marked as handled, closing the feedback loop. Reversible,
-and only the Creator sets it.
+and only the human Creator sets it — an Agent (a non-human User) may reply to a Thread but
+never Resolve it, so a human eye always gates the loop.
 _Avoid_: closed, done, archived
+
+**Feedback digest**:
+The synthesized, per-project view an Agent pulls to learn where it must act: the project's
+unresolved Threads, plus the artifacts a human has edited since the Agent's own last Revision on
+them (each with its diff). It is the structured form of "the loop" — the server computes
+attention once, so the Agent need not re-derive it from raw history every session. A read-only,
+Agent-facing projection, never shown to Clients.
+_Avoid_: inbox, feed, queue, notification
 
 ### Serving & isolation
 
