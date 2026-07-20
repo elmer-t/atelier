@@ -31,5 +31,9 @@
                 @endforeach
             </ul>
         @endif
+
+        <footer class="mt-16 border-t border-zinc-200 pt-6 text-sm text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+            <a href="{{ route('privacy') }}" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">Privacy Policy</a>
+        </footer>
     </div>
 </x-public.layout>

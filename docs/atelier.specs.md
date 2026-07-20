@@ -236,15 +236,37 @@ Behind Laravel auth (admin login). Multiple admin users supported.
 
 ---
 
-## 11. Naming
+## 11. Data protection (GDPR / ePrivacy)
+
+Atelier is deployed in the EU (`atelier.redheadit.nl`) and processes client personal data, so the following baseline is a launch requirement, not an enhancement. It is scoped to a **single-operator** tool that captures client contact details at comment time (ADR-0003); a full consent-management platform and multi-tenant DPAs are out of scope.
+
+### 11.1 What is processed
+- **Name + email** of a commenter, captured at comment time (never at view time). Pure viewers stay anonymous.
+- The **`atelier_commenter` cookie** — a persistent (up to one year) reference to the commenter's identity, set **only** as a direct result of the visitor choosing to comment, so they don't re-enter their details on return visits. Because it is set solely to deliver the commenting the visitor actively requested, the point-of-capture notice discloses it and treats submitting identity as informed consent; no separate cookie banner is used.
+
+### 11.2 Disclosures (implemented)
+- A **privacy policy** page at `/privacy` (`route('privacy')`) states what is collected, why, the legal basis (legitimate interest, engaged only on choosing to comment), retention, the cookie, data-subject rights, and a contact address (`config('atelier.privacy.*')`).
+- The policy is linked from the **public index**, the **public project page**, and the **comment identity-capture prompt**.
+- The identity-capture prompt carries a **plain-language notice** of what is collected and why, and that a cookie remembers the visitor.
+
+### 11.3 Retention & erasure
+- **Retention:** client PII is kept for as long as the project is active; it is erased on request or when the project is deleted (project deletion cascades its comments — §8.2). The exact wording shown to data subjects is `config('atelier.privacy.retention')`, to be confirmed with the owner (REDHEADIT) before shipping copy.
+- **Erasure (right to be forgotten):** an operator runs `php artisan atelier:forget-client {email}` to fulfil a request. `ClientDataEraser` anonymises the Client `User` (identifying name replaced, email re-pointed to an unroutable `@atelier.invalid` address, remember-token cleared) and **redacts the bodies of the comments they authored**, while keeping every `Comment` row so Thread structure, replies, and resolution state are preserved. Only Client-role Users are erasable this way — the command refuses Creators/Agents, guarding the operator's own account.
+- **Known limitation:** erasure scrubs the requester's identity and their *own* comment bodies, but does not scrub the requester's name/email if another participant quoted it verbatim inside *their* comment. Redacting a third party's feedback is a manual operator judgement, so it is left out of the automated path.
+
+### 11.4 Confirm with owner
+- Final legal-basis and retention wording for the published privacy policy (see §13).
+
+## 12. Naming
 
 Product name: **Atelier**. Internal-facing (REDHEADIT), formal register; connotes a studio of work-in-progress, which matches the tool's purpose. Deployment subdomain `atelier.redheadit.nl`.
 
 ---
 
-## 12. Open items to confirm with owner
+## 13. Open items to confirm with owner
 
 1. Sandbox subdomain final name (`sandbox.redheadit.nl` assumed).
+2. Final legal-basis and retention wording for the privacy policy (§11).
 
 ### Resolved
 - ~~Archived projects: link-reachable-but-hidden, or hard-disabled?~~ → **hard-disabled** (§9).
