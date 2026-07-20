@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\Hash;
  * @property ProjectVisibility $visibility
  * @property string|null $password_hash
  * @property int $session_version
+ * @property Carbon|null $expires_at
+ * @property Carbon|null $first_viewed_at
+ * @property Carbon|null $last_viewed_at
+ * @property int $view_count
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -38,6 +42,10 @@ class Project extends Model
         return [
             'status' => ProjectStatus::class,
             'visibility' => ProjectVisibility::class,
+            'expires_at' => 'datetime',
+            'first_viewed_at' => 'datetime',
+            'last_viewed_at' => 'datetime',
+            'view_count' => 'integer',
         ];
     }
 
@@ -79,6 +87,42 @@ class Project extends Model
     }
 
     /**
+     * Whether the project has an expiry that has already elapsed.
+     */
+    public function isExpired(): bool
+    {
+        return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    /**
+     * Whether the project's public links are hard-disabled — archived or past
+     * expiry — and must 404 everywhere (view, gate, files, images) just like an
+     * archived project. See docs/atelier.specs.md §9.
+     */
+    public function isHardDisabled(): bool
+    {
+        return $this->isArchived() || $this->isExpired();
+    }
+
+    /**
+     * Record an aggregate view of the project: stamp the first/last-viewed times
+     * and bump the counter. Deliberately aggregate — no per-recipient identity is
+     * stored (link recipients never log in). See docs/atelier.specs.md §1.
+     */
+    public function recordView(): void
+    {
+        $now = Carbon::now();
+
+        $this->forceFill([
+            'first_viewed_at' => $this->first_viewed_at ?? $now,
+            'last_viewed_at' => $now,
+        ])->save();
+
+        // Atomic so concurrent views never lose an increment.
+        $this->increment('view_count');
+    }
+
+    /**
      * Set (or rotate) the project's password. Passing null clears it.
      * Rotating bumps the session version, invalidating existing viewer sessions.
      */
@@ -104,18 +148,9 @@ class Project extends Model
     }
 
     /**
-     * Regenerate the shareable slug, invalidating any previously shared link.
-     */
-    public function regenerateSlug(): void
-    {
-        $this->slug = self::generateToken(config('atelier.slug_bytes'));
-        $this->save();
-    }
-
-    /**
      * Generate a URL-safe CSPRNG token of the given byte length.
      */
-    protected static function generateToken(int $bytes): string
+    public static function generateToken(int $bytes): string
     {
         return bin2hex(random_bytes(max(1, $bytes)));
     }

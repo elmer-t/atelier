@@ -145,6 +145,22 @@ class Artifact extends Model
     }
 
     /**
+     * Re-point this artifact's unpacked bundle from one sandbox token to another,
+     * preserving the artifact-scoped suffix. A no-op when there is no bundle under
+     * the old token. Used when a project's link (and sandbox token) is reissued.
+     */
+    public function rebaseBundlePath(string $previousToken, string $newToken): void
+    {
+        $prefix = $previousToken.'/';
+
+        if (blank($this->bundle_path) || ! str_starts_with($this->bundle_path, $prefix)) {
+            return;
+        }
+
+        $this->update(['bundle_path' => $newToken.'/'.substr($this->bundle_path, strlen($prefix))]);
+    }
+
+    /**
      * The full sandbox origin URL to this HTML artifact's entry file, or null.
      */
     public function sandboxUrl(): ?string

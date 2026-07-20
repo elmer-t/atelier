@@ -22,6 +22,7 @@
                         <th class="px-4 py-3 font-medium">Project</th>
                         <th class="px-4 py-3 font-medium">Visibility</th>
                         <th class="px-4 py-3 font-medium">Status</th>
+                        <th class="px-4 py-3 font-medium">Last viewed</th>
                         <th class="px-4 py-3 font-medium text-right">Actions</th>
                     </tr>
                 </thead>
@@ -45,6 +46,15 @@
                                 <flux:badge size="sm" :color="$project->isActive() ? 'blue' : 'amber'">
                                     {{ ucfirst($project->status->value) }}
                                 </flux:badge>
+                            </td>
+                            <td class="px-4 py-3">
+                                @if ($project->last_viewed_at)
+                                    <flux:tooltip content="{{ $project->last_viewed_at->toDayDateTimeString() }} · {{ $project->view_count }} {{ Str::plural('view', $project->view_count) }}">
+                                        <span class="text-zinc-600 dark:text-zinc-300">{{ $project->last_viewed_at->diffForHumans() }}</span>
+                                    </flux:tooltip>
+                                @else
+                                    <span class="text-zinc-400">Not yet viewed</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
@@ -78,6 +88,10 @@
                 </tbody>
             </table>
         </div>
+
+        <flux:text size="sm" class="mt-3 text-zinc-400">
+            View counts are aggregate only — Atelier records when a project was opened, never who opened it.
+        </flux:text>
     @endif
 
     <flux:modal name="create-project" class="md:w-96">

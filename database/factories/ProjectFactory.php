@@ -46,4 +46,14 @@ class ProjectFactory extends Factory
     {
         return $this->state(fn () => ['status' => ProjectStatus::Archived]);
     }
+
+    public function expired(): static
+    {
+        return $this->state(fn () => ['expires_at' => now()->subDay()]);
+    }
+
+    public function expiresAt(\DateTimeInterface $when): static
+    {
+        return $this->state(fn () => ['expires_at' => $when]);
+    }
 }

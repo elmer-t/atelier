@@ -44,12 +44,17 @@
                     <flux:button icon="clipboard" x-on:click="copy">
                         Copy
                     </flux:button>
-                    <flux:button icon="arrow-path" variant="subtle" wire:click="regenerateSlug"
-                        wire:confirm="Generate a new link? The current link will stop working immediately.">
-                        Regenerate
+                    <flux:button icon="arrow-path" variant="subtle" wire:click="reissueLink"
+                        wire:confirm="Revoke and reissue this link? The current link (including any sandboxed HTML) stops working immediately.">
+                        Reissue
                     </flux:button>
                 </div>
+                <flux:description>Reissuing revokes the current link and its sandboxed HTML, then generates a fresh one — without archiving the project.</flux:description>
             </flux:field>
+
+            <flux:input type="datetime-local" wire:model="expiresAt" label="Link expiry"
+                description="Optional. After this moment the link and password gate return 404, just like archiving. Leave blank for no expiry." />
+
 
             <flux:switch wire:model="isPublic" label="Public" class="atelier-switch-lg"
                 description="Anyone with the link can view, and the project is listed on the public index." />

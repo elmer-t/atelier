@@ -5,8 +5,10 @@ namespace App\Livewire\Admin\Projects;
 use App\Enums\ProjectStatus;
 use App\Enums\ProjectVisibility;
 use App\Models\Project;
+use App\Services\LinkReissuer;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -25,6 +27,11 @@ class Manage extends Component
     public string $newPassword = '';
 
     /**
+     * Optional link expiry, as a `datetime-local` string (empty = never expires).
+     */
+    public string $expiresAt = '';
+
+    /**
      * Toggle-friendly views of $visibility and $status, which stay canonical.
      */
     public bool $isPublic = false;
@@ -37,6 +44,7 @@ class Manage extends Component
         $this->title = $project->title;
         $this->visibility = $project->visibility->value;
         $this->status = $project->status->value;
+        $this->expiresAt = $project->expires_at?->format('Y-m-d\TH:i') ?? '';
         $this->isPublic = $project->isPublic();
         $this->isArchived = $project->isArchived();
     }
@@ -58,6 +66,7 @@ class Manage extends Component
             'visibility' => ['required', 'in:private,public'],
             'status' => ['required', 'in:active,archived'],
             'newPassword' => ['nullable', 'string', 'min:4', 'max:255'],
+            'expiresAt' => ['nullable', 'date'],
         ]);
 
         $becomingPrivate = $validated['visibility'] === ProjectVisibility::Private->value;
@@ -72,6 +81,7 @@ class Manage extends Component
         $this->project->title = $validated['title'];
         $this->project->status = ProjectStatus::from($validated['status']);
         $this->project->visibility = ProjectVisibility::from($validated['visibility']);
+        $this->project->expires_at = filled($validated['expiresAt']) ? Carbon::parse($validated['expiresAt']) : null;
         $this->project->save();
 
         if ($becomingPrivate) {
@@ -91,9 +101,13 @@ class Manage extends Component
         Flux::toast(variant: 'success', text: __('Settings saved.'));
     }
 
-    public function regenerateSlug(): void
+    /**
+     * Revoke the current link and issue a fresh one (slug + sandbox token),
+     * keeping the project active. The previous link stops resolving everywhere.
+     */
+    public function reissueLink(LinkReissuer $reissuer): void
     {
-        $this->project->regenerateSlug();
+        $reissuer->reissue($this->project);
         $this->project->refresh();
 
         Flux::toast(variant: 'success', text: __('A new shareable link was generated. The old link no longer works.'));

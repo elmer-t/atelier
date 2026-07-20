@@ -12,13 +12,13 @@ use Illuminate\View\View;
 class ProjectGateController extends Controller
 {
     /**
-     * Show the password prompt for a private project. Archived projects are
-     * hard-disabled (404); public or already-unlocked projects skip straight
-     * to the view.
+     * Show the password prompt for a private project. Archived or expired
+     * projects are hard-disabled (404); public or already-unlocked projects skip
+     * straight to the view.
      */
     public function show(Project $project): View|RedirectResponse
     {
-        abort_if($project->isArchived(), 404);
+        abort_if($project->isHardDisabled(), 404);
 
         if ($project->isPublic() || ProjectGate::isUnlocked($project)) {
             return redirect()->route('project.show', $project);
@@ -33,7 +33,7 @@ class ProjectGateController extends Controller
      */
     public function unlock(Request $request, Project $project): RedirectResponse
     {
-        abort_if($project->isArchived(), 404);
+        abort_if($project->isHardDisabled(), 404);
 
         if ($project->isPublic()) {
             return redirect()->route('project.show', $project);
