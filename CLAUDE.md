@@ -180,3 +180,18 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Do NOT delete tests without approval.
 
 </laravel-boost-guidelines>
+
+# Project conventions
+
+<!-- Kept outside the laravel-boost-guidelines block above so `boost` regeneration preserves it. -->
+
+## Issues & pull requests
+
+- When work implements or fixes a tracked issue, add a closing keyword to the
+  **implementing commit message** (footer) so the issue auto-closes on merge to
+  the default branch — e.g. `Closes #23`. Use one keyword per issue
+  (`Closes #1, closes #2`), and `close`/`fix`/`resolve` variants are all accepted.
+- When a pull request is created for issue-driven work, include the same
+  `Closes #<n>` line in the PR body as well.
+- Only add a closing keyword when the change genuinely resolves the issue; for
+  partial work, reference the issue without a keyword (e.g. `Refs #23`).
