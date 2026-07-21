@@ -38,7 +38,7 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3">
-                                <flux:badge size="sm" :color="$project->isPublic() ? 'green' : 'zinc'">
+                                <flux:badge size="sm" :color="$project->isPublic() ? 'red' : 'zinc'">
                                     {{ ucfirst($project->visibility->value) }}
                                 </flux:badge>
                             </td>
