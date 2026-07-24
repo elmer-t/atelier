@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -216,4 +217,45 @@ it('shows author names but never emails on the shared page', function () {
 it('backfills the existing operator as a Creator', function () {
     // A plainly-created User (the operator) defaults to the Creator role.
     expect(User::factory()->create()->role)->toBe(UserRole::Creator);
+});
+
+it('orders threads newest-first while keeping replies chronological', function () {
+    $client = User::factory()->client()->create();
+
+    $old = Comment::factory()->for($this->artifact)->for($client, 'author')
+        ->create(['body' => 'Oldest thread', 'created_at' => now()->subDays(3)]);
+    $new = Comment::factory()->for($this->artifact)->for($client, 'author')
+        ->create(['body' => 'Newest thread', 'created_at' => now()->subDay()]);
+
+    $firstReply = Comment::factory()->replyTo($old)->for($client, 'author')
+        ->create(['created_at' => now()->subDays(2)]);
+    $secondReply = Comment::factory()->replyTo($old)->for($client, 'author')
+        ->create(['created_at' => now()->subHours(6)]);
+
+    $threads = Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->instance()->threads;
+
+    expect($threads->pluck('id')->all())->toBe([$new->id, $old->id])
+        ->and($threads->last()->replies->pluck('id')->all())->toBe([$firstReply->id, $secondReply->id]);
+});
+
+it('reads the collapsed rail preference from the visitor cookie', function () {
+    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->assertSet('collapsed', false);
+
+    Livewire::withCookies(['atelier_feedback_collapsed' => '1'])
+        ->test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->assertSet('collapsed', true);
+});
+
+it('persists the collapse preference to a long-lived cookie', function () {
+    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->call('setCollapsed', true)
+        ->assertSet('collapsed', true);
+
+    $cookie = collect(Cookie::getQueuedCookies())
+        ->first(fn ($c) => $c->getName() === 'atelier_feedback_collapsed');
+
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getValue())->toBe('1');
 });

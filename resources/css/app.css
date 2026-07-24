@@ -137,3 +137,39 @@ select:focus[data-flux-control] {
 [data-anchor-found='no'] {
     @apply cursor-default;
 }
+
+/* Per-paragraph comment affordance: a hover pin in the stage's left gutter. The pin sits in
+   the block's negative margin, so the article reserves matching left padding (.comment-gutter-host)
+   to keep the pin inside the stage's horizontal clip. */
+.comment-gutter-block {
+    @apply relative;
+}
+.comment-gutter-block:hover {
+    border-radius: 0.125rem;
+    background-color: rgb(245 158 11 / 0.06);
+}
+.comment-gutter-pin {
+    @apply absolute flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm opacity-0 shadow-sm transition dark:border-zinc-700 dark:bg-zinc-900;
+    top: 0.05em;
+    left: -2.5rem;
+}
+.comment-gutter-block:hover .comment-gutter-pin,
+.comment-gutter-pin:focus-visible {
+    @apply opacity-100;
+}
+.comment-gutter-pin:hover {
+    @apply shadow-md;
+    transform: scale(1.08);
+}
+
+@media (min-width: 1024px) {
+    .comment-gutter-host {
+        padding-left: 3.5rem;
+    }
+}
+@media (max-width: 1023px) {
+    .comment-gutter-pin {
+        left: -0.25rem;
+        top: -2.1rem;
+    }
+}

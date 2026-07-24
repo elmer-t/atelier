@@ -51,16 +51,23 @@ class ArtifactComments extends Component
 
     public string $replyDraft = '';
 
+    /** Whether this visitor has collapsed the feedback rail (persisted across visits). */
+    public bool $collapsed = false;
+
     /** The session key remembering the active commenter across this browsing session. */
     private const SESSION_KEY = 'atelier.commenter';
 
     /** The long-lived cookie that re-attributes a returning visitor (ADR-0003). */
     private const COOKIE_NAME = 'atelier_commenter';
 
+    /** The long-lived cookie remembering this visitor's collapsed/expanded rail preference. */
+    private const COLLAPSED_COOKIE = 'atelier_feedback_collapsed';
+
     public function mount(): void
     {
         $this->identified = $this->currentCommenter() !== null;
         $this->identityName = $this->currentCommenter()?->name ?? '';
+        $this->collapsed = request()->cookie(self::COLLAPSED_COOKIE) === '1';
     }
 
     /**
@@ -74,8 +81,21 @@ class ArtifactComments extends Component
         return $this->artifact->comments()
             ->roots()
             ->with(['author', 'replies.author', 'resolver'])
-            ->oldest()
+            ->latest()
+            ->latest('id')
             ->get();
+    }
+
+    /**
+     * Remember whether this visitor keeps the feedback rail collapsed. Persisted for a
+     * year so the preference survives reloads and return visits — same cookie mechanism
+     * as the commenter identity (encrypted in transit, read back transparently).
+     */
+    public function setCollapsed(bool $collapsed): void
+    {
+        $this->collapsed = $collapsed;
+
+        Cookie::queue(self::COLLAPSED_COOKIE, $collapsed ? '1' : '0', 60 * 24 * 365);
     }
 
     /**

@@ -7,21 +7,92 @@
     };
 @endphp
 
-<aside class="w-full shrink-0 border-t border-zinc-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-96 lg:overflow-y-auto lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900"
+<aside
+    @class([
+        'w-full shrink-0 border-t border-zinc-200 bg-white transition-[width] duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900',
+        'lg:w-14' => $collapsed,
+        'lg:w-96' => ! $collapsed,
+    ])
+    x-bind:class="collapsed ? 'lg:w-14' : 'lg:w-96'"
     x-data="{
+        collapsed: @js($collapsed),
+        gutter: @js($artifact->isMarkdown()),
         anchorType: @js($anchorType),
         composing: false,
-        captureSelection() {
-            const text = (window.getSelection()?.toString() ?? '').trim().slice(0, 280);
-            $wire.set('draftAnchor', { type: 'text_range', quote: text });
-            this.composing = true;
+
+        setCollapsed(value) {
+            this.collapsed = value;
+            $wire.setCollapsed(value);
         },
+
         capturePoint(event) {
             const rect = event.currentTarget.getBoundingClientRect();
             const x = Math.round(((event.clientX - rect.left) / rect.width) * 1000) / 10;
             const y = Math.round(((event.clientY - rect.top) / rect.height) * 1000) / 10;
             $wire.set('draftAnchor', { type: this.anchorType, x, y });
             this.composing = true;
+        },
+
+        /**
+         * Anchor a comment to one paragraph. Its quoted text is captured straight from the
+         * rendered stage, so the highlight always re-finds an exact match on redraw.
+         */
+        commentOnBlock(quote) {
+            $wire.set('draftAnchor', { type: 'text_range', quote });
+            this.composing = true;
+            this.scrollToComposer();
+        },
+
+        scrollToComposer() {
+            this.$nextTick(() => {
+                const box = this.$root.querySelector('[data-composer]');
+
+                if (box) {
+                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    this.flash(box);
+                }
+            });
+        },
+
+        /**
+         * Give every paragraph in the stage a hover pin in the left gutter. Runs on load and
+         * after any thread mutation; skips blocks that already have one so redraws are cheap.
+         */
+        mountGutter() {
+            if (! this.gutter) {
+                return;
+            }
+
+            const stage = document.querySelector('[data-artifact-stage]');
+
+            if (! stage) {
+                return;
+            }
+
+            // Reserve gutter room inside the article so a pin in the block's negative margin
+            // stays within the stage's horizontal clip and never spills off-screen.
+            stage.closest('article')?.classList.add('comment-gutter-host');
+
+            stage.querySelectorAll('p, li, h2, h3, blockquote').forEach((block) => {
+                if (block.querySelector(':scope > .comment-gutter-pin') || block.textContent.trim().length < 24) {
+                    return;
+                }
+
+                const quote = block.textContent.trim().slice(0, 280);
+                block.classList.add('comment-gutter-block');
+
+                const pin = document.createElement('button');
+                pin.type = 'button';
+                pin.className = 'comment-gutter-pin';
+                pin.title = 'Comment on this paragraph';
+                pin.setAttribute('aria-label', 'Comment on this paragraph');
+                pin.textContent = '💬';
+                pin.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    this.commentOnBlock(quote);
+                });
+                block.appendChild(pin);
+            });
         },
 
         /**
@@ -48,6 +119,8 @@
             this.$root.querySelectorAll('[data-anchor-quote]').forEach((card) => {
                 card.dataset.anchorFound = this.drawAnchor(stage, card) ? 'yes' : 'no';
             });
+
+            this.mountGutter();
         },
 
         /**
@@ -162,16 +235,102 @@
     }"
     x-init="$nextTick(() => sync())"
     x-on:threads-updated.window="$nextTick(() => sync())">
-    <div class="p-6">
-        <div class="mb-5 flex items-center justify-between">
+
+    {{-- Collapsed: slim vertical tab to reopen (desktop) --}}
+    <button type="button" x-show="collapsed" x-on:click="setCollapsed(false)" title="Show feedback"
+        @unless ($collapsed) style="display: none" @endunless
+        class="hidden h-full w-full flex-col items-center gap-3 pt-5 text-zinc-500 transition hover:text-zinc-900 lg:flex dark:text-zinc-400 dark:hover:text-white">
+        <span class="text-lg leading-none">«</span>
+        <span class="text-xs font-semibold uppercase tracking-widest" style="writing-mode: vertical-rl">Feedback</span>
+        <span class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">{{ $this->threads->count() }}</span>
+    </button>
+
+    {{-- Collapsed: header bar to reopen (mobile) --}}
+    <button type="button" x-show="collapsed" x-on:click="setCollapsed(false)"
+        @unless ($collapsed) style="display: none" @endunless
+        class="flex w-full items-center justify-between p-5 text-left lg:hidden">
+        <span class="flex items-center gap-2">
             <flux:heading size="sm">Feedback</flux:heading>
-            <flux:text size="sm" class="text-zinc-400">
-                {{ trans_choice(':count comment|:count comments', $this->threads->count(), ['count' => $this->threads->count()]) }}
-            </flux:text>
+            <span class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">{{ $this->threads->count() }}</span>
+        </span>
+        <span class="text-base text-zinc-400">⌄</span>
+    </button>
+
+    {{-- Expanded panel: entry form top-most, newest-first threads beneath --}}
+    <div x-show="! collapsed" @if ($collapsed) style="display: none" @endif class="flex flex-col p-6">
+        <div class="order-1 mb-5 flex items-center justify-between gap-2">
+            <flux:heading size="sm">Feedback</flux:heading>
+            <div class="flex items-center gap-2">
+                <flux:text size="sm" class="whitespace-nowrap text-zinc-400">
+                    {{ trans_choice(':count comment|:count comments', $this->threads->count(), ['count' => $this->threads->count()]) }}
+                </flux:text>
+                <button type="button" x-on:click="setCollapsed(true)" title="Collapse feedback" aria-label="Collapse feedback"
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
+                    <span class="hidden text-base leading-none lg:inline">»</span>
+                    <span class="text-base leading-none lg:hidden">⌃</span>
+                </button>
+            </div>
         </div>
 
-        {{-- Existing threads --}}
-        <ul class="space-y-3">
+        {{-- Identity capture --}}
+        @unless ($identified)
+            <div class="order-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800" data-composer>
+                <flux:heading size="sm">Add your details to comment</flux:heading>
+                <div class="mt-3 grid gap-3">
+                    <flux:input wire:model="captureName" label="Name" placeholder="Jane Doe" />
+                    <flux:input wire:model="captureEmail" type="email" label="Email" placeholder="jane@example.com" />
+                </div>
+                <flux:error name="captureName" />
+                <flux:error name="captureEmail" />
+                <div class="mt-3">
+                    <flux:button size="sm" variant="primary" wire:click="saveIdentity">Continue</flux:button>
+                </div>
+                <flux:text size="sm" class="mt-2 text-zinc-400">
+                    We use your name and email only to attribute your feedback; your email is never shown to others.
+                    We’ll remember you on this device with a cookie so you don’t have to re-enter your details.
+                    See our <a href="{{ route('privacy') }}" target="_blank" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">Privacy Policy</a>.
+                </flux:text>
+            </div>
+        @else
+            {{-- Composer --}}
+            <div class="order-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800" data-composer>
+                <div class="flex items-center justify-between gap-2">
+                    <flux:heading size="sm">New comment</flux:heading>
+                    <flux:text size="sm" class="truncate text-zinc-400">as {{ $identityName }}</flux:text>
+                </div>
+
+                @if ($artifact->isMarkdown())
+                    <div x-show="! @js(filled($draftAnchor))" class="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-zinc-200 px-3 py-2.5 text-sm text-zinc-400 dark:border-zinc-700 dark:text-zinc-500">
+                        <span>💬</span>
+                        <span>Hover a paragraph and click the pin in the margin to comment on it.</span>
+                    </div>
+                @else
+                    <div class="mt-2 flex items-center gap-2">
+                        <flux:button size="xs" variant="ghost" x-on:click="composing = true">Add a comment</flux:button>
+                        @if (filled($draftAnchor))
+                            <flux:badge size="sm" color="blue">Anchor set</flux:badge>
+                        @endif
+                    </div>
+                @endif
+
+                <div class="mt-3" x-show="composing || @js(filled($draftAnchor))" x-cloak>
+                    @if ($artifact->isMarkdown())
+                        <flux:badge size="sm" color="blue" class="mb-2">Commenting on the highlighted text</flux:badge>
+                    @endif
+                    <flux:textarea wire:model="draft" rows="3" placeholder="Share your feedback…" />
+                    <flux:error name="draft" />
+                    <div class="mt-2 flex gap-2">
+                        <flux:button size="sm" variant="primary" wire:click="postComment">Post comment</flux:button>
+                        @if ($artifact->isMarkdown())
+                            <flux:button size="sm" variant="ghost" x-show="@js(filled($draftAnchor))" x-cloak wire:click="$set('draftAnchor', [])" x-on:click="composing = false">Cancel</flux:button>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @endunless
+
+        {{-- Existing threads (newest first) --}}
+        <ul class="order-3 mt-5 space-y-3 border-t border-zinc-200 pt-5 dark:border-zinc-800">
             @forelse ($this->threads as $thread)
                 <li wire:key="thread-{{ $thread->id }}"
                     data-comment-id="{{ $thread->id }}"
@@ -249,57 +408,9 @@
                 </li>
             @empty
                 <li class="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-sm text-zinc-400 dark:border-zinc-800">
-                    No feedback yet. {{ $artifact->isMarkdown() ? 'Select text' : 'Click the content' }} to leave the first comment.
+                    No feedback yet. {{ $artifact->isMarkdown() ? 'Hover a paragraph and click the pin' : 'Click the content' }} to leave the first comment.
                 </li>
             @endforelse
         </ul>
-
-        {{-- Identity capture --}}
-        @unless ($identified)
-            <div class="mt-6 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <flux:heading size="sm">Add your details to comment</flux:heading>
-                <div class="mt-3 grid gap-3">
-                    <flux:input wire:model="captureName" label="Name" placeholder="Jane Doe" />
-                    <flux:input wire:model="captureEmail" type="email" label="Email" placeholder="jane@example.com" />
-                </div>
-                <flux:error name="captureName" />
-                <flux:error name="captureEmail" />
-                <div class="mt-3">
-                    <flux:button size="sm" variant="primary" wire:click="saveIdentity">Continue</flux:button>
-                </div>
-                <flux:text size="sm" class="mt-2 text-zinc-400">
-                    We use your name and email only to attribute your feedback; your email is never shown to others.
-                    We’ll remember you on this device with a cookie so you don’t have to re-enter your details.
-                    See our <a href="{{ route('privacy') }}" target="_blank" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">Privacy Policy</a>.
-                </flux:text>
-            </div>
-        @else
-            {{-- Composer --}}
-            <div class="mt-6 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <div class="flex items-center justify-between gap-2">
-                    <flux:heading size="sm">New comment</flux:heading>
-                    <flux:text size="sm" class="truncate text-zinc-400">as {{ $identityName }}</flux:text>
-                </div>
-
-                <div class="mt-2 flex items-center gap-2">
-                    @if ($artifact->isMarkdown())
-                        <flux:button size="xs" variant="ghost" x-on:click="captureSelection()">Use selected text</flux:button>
-                    @else
-                        <flux:button size="xs" variant="ghost" x-on:click="composing = true">Add a comment</flux:button>
-                    @endif
-                    @if (filled($draftAnchor))
-                        <flux:badge size="sm" color="blue">Anchor set</flux:badge>
-                    @endif
-                </div>
-
-                <div class="mt-3" x-show="composing || @js(filled($draftAnchor))" x-cloak>
-                    <flux:textarea wire:model="draft" rows="3" placeholder="Share your feedback…" />
-                    <flux:error name="draft" />
-                    <div class="mt-2">
-                        <flux:button size="sm" variant="primary" wire:click="postComment">Post comment</flux:button>
-                    </div>
-                </div>
-            </div>
-        @endunless
     </div>
 </aside>
