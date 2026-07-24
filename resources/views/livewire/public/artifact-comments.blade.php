@@ -47,10 +47,16 @@
             this.$nextTick(() => {
                 const box = this.$root.querySelector('[data-composer]');
 
-                if (box) {
-                    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    this.flash(box);
+                if (! box) {
+                    return;
                 }
+
+                box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                this.flash(box);
+
+                // Drop the cursor straight into the comment field (or the name field if the
+                // visitor still needs to identify). preventScroll keeps the smooth scroll above.
+                box.querySelector('textarea, input')?.focus({ preventScroll: true });
             });
         },
 
