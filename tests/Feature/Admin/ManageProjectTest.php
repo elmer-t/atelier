@@ -2,6 +2,7 @@
 
 use App\Livewire\Admin\Projects\Index;
 use App\Livewire\Admin\Projects\Manage;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Models\User;
 use Livewire\Livewire;
@@ -158,4 +159,47 @@ it('saves an optional link expiry and clears it', function () {
         ->assertHasNoErrors();
 
     expect($project->refresh()->expires_at)->toBeNull();
+});
+
+it('sets and clears a cover image from an image artifact', function () {
+    $project = Project::factory()->public()->create();
+    $cover = Artifact::factory()->for($project)->file()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('headerArtifactId', (string) $cover->id)
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->header_artifact_id)->toBe($cover->id);
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('headerArtifactId', '')
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->header_artifact_id)->toBeNull();
+});
+
+it('rejects a non-image artifact as the cover', function () {
+    $project = Project::factory()->public()->create();
+    $zip = Artifact::factory()->for($project)->download()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('headerArtifactId', (string) $zip->id)
+        ->call('saveSettings')
+        ->assertHasErrors('headerArtifactId');
+
+    expect($project->refresh()->header_artifact_id)->toBeNull();
+});
+
+it('rejects an artifact from another project as the cover', function () {
+    $project = Project::factory()->public()->create();
+    $foreign = Artifact::factory()->for(Project::factory()->create())->file()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('headerArtifactId', (string) $foreign->id)
+        ->call('saveSettings')
+        ->assertHasErrors('headerArtifactId');
+
+    expect($project->refresh()->header_artifact_id)->toBeNull();
 });

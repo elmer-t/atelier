@@ -8,6 +8,7 @@ use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -25,8 +26,10 @@ use Illuminate\Support\Facades\Hash;
  * @property Carbon|null $first_viewed_at
  * @property Carbon|null $last_viewed_at
  * @property int $view_count
+ * @property int|null $header_artifact_id
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read Artifact|null $headerArtifact
  */
 #[Fillable(['title'])]
 class Project extends Model
@@ -64,6 +67,32 @@ class Project extends Model
     public function artifacts(): HasMany
     {
         return $this->hasMany(Artifact::class)->orderBy('sort_order');
+    }
+
+    /**
+     * The artifact chosen as this project's cover, if any. Only renders as an
+     * image when it is an image artifact; other types fall back to the gradient
+     * placeholder (see headerImageUrl).
+     *
+     * @return BelongsTo<Artifact, $this>
+     */
+    public function headerArtifact(): BelongsTo
+    {
+        return $this->belongsTo(Artifact::class, 'header_artifact_id');
+    }
+
+    /**
+     * The public URL of this project's cover image, or null when it has no header
+     * artifact or the chosen artifact is not an image. Callers render the gradient
+     * monogram fallback on null.
+     */
+    public function headerImageUrl(): ?string
+    {
+        if ($this->headerArtifact === null || ! $this->headerArtifact->isImage()) {
+            return null;
+        }
+
+        return route('project.artifact.file', [$this, $this->headerArtifact]);
     }
 
     public function isPrivate(): bool

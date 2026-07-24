@@ -122,6 +122,15 @@ class Artifact extends Model
         return $this->type === ArtifactType::File;
     }
 
+    /**
+     * Whether this artifact is an image file — the only type that can currently
+     * back a project's header cover. See docs/atelier.specs.md §7.3.
+     */
+    public function isImage(): bool
+    {
+        return $this->isFile() && str_starts_with((string) $this->mime_type, 'image/');
+    }
+
     public function origin(): ArtifactOrigin
     {
         return $this->type->origin();

@@ -67,6 +67,14 @@
                     placeholder="••••••••" />
             </div>
 
+            <flux:select wire:model="headerArtifactId" label="Cover image"
+                description="Shown on the public index. Pick one of this project's image artifacts, or leave blank for a generated cover.">
+                <flux:select.option value="">No cover (generated)</flux:select.option>
+                @foreach ($this->imageArtifacts as $artifact)
+                    <flux:select.option value="{{ $artifact->id }}">{{ $artifact->title }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
             <flux:switch wire:model="isArchived" label="Archived" class="atelier-switch-lg"
                 description="Archived projects stay reachable by link but are hidden from the public index." />
 

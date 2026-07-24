@@ -2,14 +2,19 @@
 
 namespace App\Livewire\Admin\Projects;
 
+use App\Enums\ArtifactType;
 use App\Enums\ProjectStatus;
 use App\Enums\ProjectVisibility;
+use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\LinkReissuer;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -32,6 +37,11 @@ class Manage extends Component
     public string $expiresAt = '';
 
     /**
+     * The id of the image artifact used as the public cover (empty = gradient fallback).
+     */
+    public string $headerArtifactId = '';
+
+    /**
      * Toggle-friendly views of $visibility and $status, which stay canonical.
      */
     public bool $isPublic = false;
@@ -45,8 +55,23 @@ class Manage extends Component
         $this->visibility = $project->visibility->value;
         $this->status = $project->status->value;
         $this->expiresAt = $project->expires_at?->format('Y-m-d\TH:i') ?? '';
+        $this->headerArtifactId = (string) ($project->header_artifact_id ?? '');
         $this->isPublic = $project->isPublic();
         $this->isArchived = $project->isArchived();
+    }
+
+    /**
+     * The project's image artifacts, the only ones eligible as a cover.
+     *
+     * @return Collection<int, Artifact>
+     */
+    #[Computed]
+    public function imageArtifacts(): Collection
+    {
+        return $this->project->artifacts()
+            ->where('type', ArtifactType::File->value)
+            ->where('mime_type', 'like', 'image/%')
+            ->get();
     }
 
     public function updatedIsPublic(bool $value): void
@@ -67,6 +92,12 @@ class Manage extends Component
             'status' => ['required', 'in:active,archived'],
             'newPassword' => ['nullable', 'string', 'min:4', 'max:255'],
             'expiresAt' => ['nullable', 'date'],
+            // Must be one of this project's own image artifacts.
+            'headerArtifactId' => ['nullable', Rule::exists((new Artifact)->getTable(), 'id')->where(function ($query) {
+                $query->where('project_id', $this->project->id)
+                    ->where('type', ArtifactType::File->value)
+                    ->where('mime_type', 'like', 'image/%');
+            })],
         ]);
 
         $becomingPrivate = $validated['visibility'] === ProjectVisibility::Private->value;
@@ -82,6 +113,7 @@ class Manage extends Component
         $this->project->status = ProjectStatus::from($validated['status']);
         $this->project->visibility = ProjectVisibility::from($validated['visibility']);
         $this->project->expires_at = filled($validated['expiresAt']) ? Carbon::parse($validated['expiresAt']) : null;
+        $this->project->header_artifact_id = filled($validated['headerArtifactId']) ? (int) $validated['headerArtifactId'] : null;
         $this->project->save();
 
         if ($becomingPrivate) {

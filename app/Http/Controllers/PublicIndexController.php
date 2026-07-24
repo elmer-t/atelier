@@ -19,6 +19,7 @@ class PublicIndexController extends Controller
             ->where('status', ProjectStatus::Active)
             ->where('visibility', ProjectVisibility::Public)
             ->withCount('artifacts')
+            ->with('headerArtifact')
             ->latest()
             ->get();
 
