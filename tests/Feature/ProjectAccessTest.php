@@ -106,6 +106,26 @@ it('records first and last viewed timestamps when a project is opened', function
         ->and($project->first_viewed_at->equalTo($firstViewedAt))->toBeTrue();
 });
 
+it('does not touch updated_at when a project is merely viewed', function () {
+    $project = Project::factory()->public()->create();
+    Artifact::factory()->for($project)->markdown('# Hi')->create();
+
+    // Pretend the project was last edited a while ago, reading back the value
+    // the database actually stored (column precision may differ from memory).
+    $project->forceFill(['updated_at' => now()->subWeek()])->saveQuietly();
+    $project->refresh();
+    $editedAt = $project->updated_at;
+
+    $this->travel(1)->days();
+
+    $this->get(route('project.show', $project))->assertOk();
+
+    $project->refresh();
+    expect($project->view_count)->toBe(1)
+        ->and($project->last_viewed_at)->not->toBeNull()
+        ->and($project->updated_at->equalTo($editedAt))->toBeTrue();
+});
+
 it('invalidates the viewer session when the password is rotated', function () {
     $project = Project::factory()->private('first')->create();
 

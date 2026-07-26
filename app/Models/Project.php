@@ -137,18 +137,24 @@ class Project extends Model
      * Record an aggregate view of the project: stamp the first/last-viewed times
      * and bump the counter. Deliberately aggregate — no per-recipient identity is
      * stored (link recipients never log in). See docs/atelier.specs.md §1.
+     *
+     * A view is not an edit, so `updated_at` is left untouched — it moves only
+     * when the Creator actually changes the project. Timestamps are disabled for
+     * the duration so both the save and the increment leave it alone.
      */
     public function recordView(): void
     {
         $now = Carbon::now();
 
-        $this->forceFill([
-            'first_viewed_at' => $this->first_viewed_at ?? $now,
-            'last_viewed_at' => $now,
-        ])->save();
+        self::withoutTimestamps(function () use ($now): void {
+            $this->forceFill([
+                'first_viewed_at' => $this->first_viewed_at ?? $now,
+                'last_viewed_at' => $now,
+            ])->save();
 
-        // Atomic so concurrent views never lose an increment.
-        $this->increment('view_count');
+            // Atomic so concurrent views never lose an increment.
+            $this->increment('view_count');
+        });
     }
 
     /**
