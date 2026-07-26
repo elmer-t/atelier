@@ -74,6 +74,19 @@ class Manage extends Component
             ->get();
     }
 
+    /**
+     * The image artifact currently picked as the cover, resolved from the form
+     * value rather than the model so the header thumbnail tracks the select
+     * before the change is saved.
+     */
+    #[Computed]
+    public function coverArtifact(): ?Artifact
+    {
+        return filled($this->headerArtifactId)
+            ? $this->imageArtifacts->firstWhere('id', (int) $this->headerArtifactId)
+            : null;
+    }
+
     public function updatedIsPublic(bool $value): void
     {
         $this->visibility = $value ? ProjectVisibility::Public->value : ProjectVisibility::Private->value;
@@ -82,6 +95,20 @@ class Manage extends Component
     public function updatedIsArchived(bool $value): void
     {
         $this->status = $value ? ProjectStatus::Archived->value : ProjectStatus::Active->value;
+    }
+
+    /**
+     * The segmented controls bind to the canonical strings; mirror them back
+     * onto the booleans the header badges and password field read.
+     */
+    public function updatedVisibility(string $value): void
+    {
+        $this->isPublic = $value === ProjectVisibility::Public->value;
+    }
+
+    public function updatedStatus(string $value): void
+    {
+        $this->isArchived = $value === ProjectStatus::Archived->value;
     }
 
     public function saveSettings(): void
@@ -129,6 +156,8 @@ class Manage extends Component
 
         $this->reset('newPassword');
         $this->project->refresh();
+
+        $this->modal('project-settings')->close();
 
         Flux::toast(variant: 'success', text: __('Settings saved.'));
     }

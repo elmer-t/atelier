@@ -5,6 +5,7 @@ use App\Livewire\Admin\Projects\Manage;
 use App\Models\Artifact;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -114,8 +115,48 @@ it('keeps the password field in the markup for public projects', function () {
     $project = Project::factory()->public()->create();
 
     Livewire::test(Manage::class, ['project' => $project])
-        ->assertSee('Set password')
+        ->assertSee('wire:model="newPassword"', escape: false)
         ->assertSee('x-bind:disabled="$wire.isPublic"', escape: false);
+});
+
+it('renders the manage page with the artifact list and the settings modal', function () {
+    $project = Project::factory()->create(['title' => 'Harbor District']);
+
+    $this->get(route('admin.projects.manage', $project))
+        ->assertOk()
+        ->assertSee('Harbor District')
+        ->assertSee('Artifacts')
+        ->assertSee('project-settings', escape: false);
+});
+
+it('mirrors the segmented controls back onto the toggles', function () {
+    $project = Project::factory()->private('secret')->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('visibility', 'public')
+        ->assertSet('isPublic', true)
+        ->set('status', 'archived')
+        ->assertSet('isArchived', true);
+});
+
+it('shows the cover thumbnail for the artifact picked in the form', function () {
+    $project = Project::factory()->public()->create();
+    $cover = Artifact::factory()->for($project)->file()->create();
+
+    // Tracks the unsaved form value, not the persisted column.
+    Livewire::test(Manage::class, ['project' => $project])
+        ->assertDontSee(route('admin.projects.artifact-preview', [$project, $cover]), escape: false)
+        ->set('headerArtifactId', (string) $cover->id)
+        ->assertSee(route('admin.projects.artifact-preview', [$project, $cover]), escape: false);
+});
+
+it('serves an artifact preview to the creator on a private project', function () {
+    Storage::fake('local');
+    $project = Project::factory()->private('secret')->create();
+    $cover = Artifact::factory()->for($project)->file()->create(['stored_path' => 'artifacts/cover.png']);
+    Storage::disk('local')->put('artifacts/cover.png', 'not-really-a-png');
+
+    $this->get(route('admin.projects.artifact-preview', [$project, $cover]))->assertOk();
 });
 
 it('reissues the shareable link, rotating slug and sandbox token', function () {

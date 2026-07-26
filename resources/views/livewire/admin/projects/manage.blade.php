@@ -1,91 +1,151 @@
-<div class="mx-auto w-full max-w-4xl px-6 py-8">
-    <div class="mb-6">
-        <flux:button size="sm" variant="ghost" icon="arrow-left" :href="route('admin.projects')" wire:navigate>
-            All projects
-        </flux:button>
-    </div>
+{{--
+    Manage a project. Settings are read far less often than artifacts are
+    edited, so they live behind a modal and the page itself belongs to the
+    artifact list. The sticky bar carries the identity — cover thumbnail,
+    title, state and shareable link — without spending vertical room on it.
+--}}
+@php
+    $cover = $this->coverArtifact;
+    $coverUrl = $cover ? route('admin.projects.artifact-preview', [$project, $cover]) : null;
+    $link = route('project.show', $project);
+@endphp
 
-    <div class="mb-8 flex items-start justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ $project->title }}</flux:heading>
-            <flux:subheading>Manage settings and artifacts for this project.</flux:subheading>
-        </div>
-        <flux:badge :color="$project->isActive() ? 'blue' : 'amber'">{{ ucfirst($project->status->value) }}</flux:badge>
-    </div>
+<div>
+    <div class="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur dark:border-zinc-700 dark:bg-zinc-800/90">
+        <div class="mx-auto flex w-full max-w-5xl items-center gap-3 px-6 py-3">
+            <flux:tooltip content="All projects">
+                <flux:button size="sm" variant="ghost" icon="arrow-left" :href="route('admin.projects')" wire:navigate inset />
+            </flux:tooltip>
 
-    {{-- Settings --}}
-    <div class="mb-8 rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
-        <form wire:submit="saveSettings" class="space-y-6">
-            <flux:heading size="sm">Settings</flux:heading>
-
-            <flux:input wire:model="title" label="Title" />
-
-            {{-- Shareable link --}}
-            <flux:field>
-                <flux:label>Shareable link</flux:label>
-                <div class="flex items-center gap-2" x-data="{
-                    link: @js(route('project.show', $project)),
-                    async copy() {
-                        {{-- navigator.clipboard is undefined outside a secure context (e.g. http://*.test). --}}
-                        try {
-                            if (window.isSecureContext && navigator.clipboard) {
-                                await navigator.clipboard.writeText(this.link);
-                            } else {
-                                this.$refs.link.select();
-                                document.execCommand('copy');
-                            }
-                            $flux.toast('Link copied');
-                        } catch (e) {
-                            $flux.toast({ variant: 'danger', text: 'Could not copy. Select the link and copy manually.' });
-                        }
-                    },
-                }">
-                    <flux:input x-ref="link" readonly value="{{ route('project.show', $project) }}" class="flex-1" />
-                    <flux:button icon="clipboard" x-on:click="copy">
-                        Copy
-                    </flux:button>
-                    <flux:button icon="arrow-path" variant="subtle" wire:click="reissueLink"
-                        wire:confirm="Revoke and reissue this link? The current link (including any sandboxed HTML) stops working immediately.">
-                        Reissue
-                    </flux:button>
-                </div>
-                <flux:description>Reissuing revokes the current link and its sandboxed HTML, then generates a fresh one — without archiving the project.</flux:description>
-            </flux:field>
-
-            <flux:input type="datetime-local" wire:model="expiresAt" label="Link expiry"
-                description="Optional. After this moment the link and password gate return 404, just like archiving. Leave blank for no expiry." />
-
-
-            <flux:switch wire:model="isPublic" label="Public" class="atelier-switch-lg"
-                description="Anyone with the link can view, and the project is listed on the public index." />
-
-            {{-- Stays in the layout when public so toggling never reflows the form. --}}
-            <div x-bind:class="$wire.isPublic && 'opacity-50'" class="transition-opacity">
-                <flux:input type="password" wire:model="newPassword" x-bind:disabled="$wire.isPublic"
-                    label="{{ $project->password_hash ? 'Rotate password' : 'Set password' }}"
-                    description="{{ $project->password_hash ? 'Leave blank to keep the current password. Rotating signs out existing viewers.' : 'Required for a private project.' }}"
-                    placeholder="••••••••" />
+            {{-- Cover thumbnail, falling back to the same gradient monogram the public index uses. --}}
+            <div class="h-9 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-sky-400 to-indigo-400">
+                @if ($coverUrl)
+                    <img src="{{ $coverUrl }}" alt="" class="h-full w-full object-cover">
+                @else
+                    <div class="flex h-full w-full items-center justify-center text-sm font-semibold text-white/90">
+                        {{ Str::upper(Str::substr($project->title, 0, 1)) }}
+                    </div>
+                @endif
             </div>
 
-            <flux:select wire:model="headerArtifactId" label="Cover image"
-                description="Shown on the public index. Pick one of this project's image artifacts, or leave blank for a generated cover.">
-                <flux:select.option value="">No cover (generated)</flux:select.option>
-                @foreach ($this->imageArtifacts as $artifact)
-                    <flux:select.option value="{{ $artifact->id }}">{{ $artifact->title }}</flux:select.option>
-                @endforeach
-            </flux:select>
+            <div class="min-w-0 flex-1" x-data="{
+                link: @js($link),
+                async copy() {
+                    {{-- navigator.clipboard is undefined outside a secure context (e.g. http://*.test). --}}
+                    try {
+                        if (window.isSecureContext && navigator.clipboard) {
+                            await navigator.clipboard.writeText(this.link);
+                        } else {
+                            this.$refs.link.select();
+                            document.execCommand('copy');
+                        }
+                        $flux.toast('Link copied');
+                    } catch (e) {
+                        $flux.toast({ variant: 'danger', text: 'Could not copy. Select the link and copy manually.' });
+                    }
+                },
+            }">
+                <div class="flex items-center gap-2">
+                    <flux:heading class="truncate">{{ $project->title }}</flux:heading>
 
-            <flux:switch wire:model="isArchived" label="Archived" class="atelier-switch-lg"
-                description="Archived projects stay reachable by link but are hidden from the public index." />
+                    <flux:badge size="sm" :color="$isPublic ? 'red' : 'zinc'">
+                        {{ $isPublic ? 'Public' : 'Private' }}
+                    </flux:badge>
 
-            <div class="flex justify-end">
+                    @if ($isArchived)
+                        <flux:badge size="sm" color="amber">Archived</flux:badge>
+                    @endif
+
+                    @if ($project->expires_at)
+                        <flux:tooltip content="Link expires {{ $project->expires_at->toDayDateTimeString() }}">
+                            <flux:badge size="sm" color="zinc" icon="clock">
+                                {{ $project->expires_at->isPast() ? 'Expired' : 'Expires' }}
+                            </flux:badge>
+                        </flux:tooltip>
+                    @endif
+                </div>
+
+                {{-- Off-screen twin for the execCommand fallback above. --}}
+                <input x-ref="link" readonly value="{{ $link }}" class="sr-only" tabindex="-1" aria-hidden="true">
+
+                <div class="flex items-center gap-1">
+                    <button type="button" x-on:click="copy"
+                        class="hidden max-w-md truncate font-mono text-xs text-zinc-400 hover:text-zinc-700 sm:block dark:hover:text-zinc-100">
+                        {{ Str::after($link, '://') }}
+                    </button>
+                    <flux:tooltip content="Copy link">
+                        <flux:button size="xs" variant="ghost" icon="clipboard" x-on:click="copy" inset />
+                    </flux:tooltip>
+                    <flux:tooltip content="Reissue — revokes this link and its sandboxed HTML immediately, without archiving the project">
+                        <flux:button size="xs" variant="ghost" icon="arrow-path" inset wire:click="reissueLink"
+                            wire:confirm="Revoke and reissue this link? The current link (including any sandboxed HTML) stops working immediately." />
+                    </flux:tooltip>
+                </div>
+            </div>
+
+            <flux:modal.trigger name="project-settings">
+                <flux:button size="sm" variant="filled" icon="cog-6-tooth">Settings</flux:button>
+            </flux:modal.trigger>
+        </div>
+    </div>
+
+    <div class="mx-auto w-full max-w-5xl px-6 py-6">
+        <livewire:admin.projects.artifacts-manager :project="$project" :key="'artifacts-'.$project->id" />
+    </div>
+
+    <flux:modal name="project-settings" class="md:w-2xl">
+        <form wire:submit="saveSettings" class="space-y-6">
+            <flux:heading size="lg">Settings</flux:heading>
+
+            <div class="grid items-start gap-4 sm:grid-cols-2">
+                <flux:input wire:model="title" label="Title" />
+
+                <flux:select wire:model.live="headerArtifactId" label="Cover image">
+                    <flux:select.option value="">Generated cover</flux:select.option>
+                    @foreach ($this->imageArtifacts as $artifact)
+                        <flux:select.option value="{{ $artifact->id }}">{{ $artifact->title }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:radio.group wire:model.live="visibility" label="Visibility" variant="segmented"
+                    description="Public projects are listed on the public index.">
+                    <flux:radio value="private" label="Private" />
+                    <flux:radio value="public" label="Public" />
+                </flux:radio.group>
+
+                <flux:radio.group wire:model.live="status" label="Status" variant="segmented"
+                    description="Archived projects stay reachable by link, hidden from the index.">
+                    <flux:radio value="active" label="Active" />
+                    <flux:radio value="archived" label="Archived" />
+                </flux:radio.group>
+
+                {{-- Stays in the layout when public so toggling never reflows the form. --}}
+                <div x-bind:class="$wire.isPublic && 'opacity-50'" class="transition-opacity">
+                    <flux:input type="password" wire:model="newPassword" x-bind:disabled="$wire.isPublic"
+                        label="{{ $project->password_hash ? 'Rotate password' : 'Password' }}"
+                        placeholder="{{ $project->password_hash ? '••••••••' : 'Required when private' }}"
+                        description="{{ $project->password_hash ? 'Rotating signs out existing viewers.' : '' }}" />
+                </div>
+
+                <flux:field>
+                    <flux:label>
+                        Link expiry
+                        <flux:tooltip content="After this moment the link and password gate return 404, just like archiving.">
+                            <flux:icon.question-mark-circle variant="micro" class="ml-0.5 inline text-zinc-400" />
+                        </flux:tooltip>
+                    </flux:label>
+                    <flux:input type="datetime-local" wire:model="expiresAt" />
+                    <flux:description>Leave blank for no expiry.</flux:description>
+                    <flux:error name="expiresAt" />
+                </flux:field>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost" type="button">Cancel</flux:button>
+                </flux:modal.close>
                 <flux:button type="submit" variant="primary">Save settings</flux:button>
             </div>
         </form>
-    </div>
-
-    {{-- Artifacts --}}
-    <div class="mb-8">
-        <livewire:admin.projects.artifacts-manager :project="$project" :key="'artifacts-'.$project->id" />
-    </div>
+    </flux:modal>
 </div>
