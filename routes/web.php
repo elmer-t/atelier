@@ -5,6 +5,7 @@ use App\Http\Controllers\MarkdownImageController;
 use App\Http\Controllers\ProjectGateController;
 use App\Http\Controllers\ProjectViewController;
 use App\Http\Controllers\PublicIndexController;
+use App\Livewire\Dashboard;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -17,7 +18,7 @@ Route::get('/', PublicIndexController::class)->name('home');
 
 Route::view('privacy', 'privacy')->name('privacy');
 
-Route::view('dashboard', 'dashboard')
+Route::livewire('dashboard', Dashboard::class)
     ->middleware(['auth', 'verified', 'creator'])
     ->name('dashboard');
 
