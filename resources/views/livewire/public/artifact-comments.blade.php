@@ -264,6 +264,16 @@
 
     {{-- Expanded panel: entry form top-most, newest-first threads beneath --}}
     <div x-show="! collapsed" @if ($collapsed) style="display: none" @endif class="flex flex-col p-6">
+        {{--
+            Honeypot for every write path in this panel. Positioned off-screen rather
+            than hidden with `display: none`, which form-filling automation is known to
+            skip; a human never reaches it, so a filled value means a bot.
+        --}}
+        <div aria-hidden="true" class="pointer-events-none absolute -left-[9999px] h-px w-px overflow-hidden">
+            <label for="atelier-website">Website</label>
+            <input type="text" id="atelier-website" wire:model="website" tabindex="-1" autocomplete="off" />
+        </div>
+
         <div class="order-1 mb-5 flex items-center justify-between gap-2">
             <flux:heading size="sm">Feedback</flux:heading>
             <div class="flex items-center gap-2">

@@ -56,4 +56,35 @@ return [
         ),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public comment abuse controls
+    |--------------------------------------------------------------------------
+    |
+    | Commenting is passwordless and open to anyone holding a project link
+    | (ADR-0003), so these limits are the only thing between the public form
+    | and a flood of junk Users and Comments. They are deliberately far above
+    | human pace: a real commenter never notices them.
+    |
+    | `posts_per_minute_per_ip` is the outer ceiling — it still bites when an
+    | attacker rotates through fresh identities, which the per-commenter limit
+    | alone would not catch. `min_seconds_before_submit` is the floor on how
+    | fast identity can plausibly be typed; set it to 0 to disable the check.
+    |
+    | See docs/atelier.specs.md §10 (security checklist).
+    |
+    */
+
+    'comments' => [
+        'max_body_length' => 5000,
+
+        'min_seconds_before_submit' => (int) env('ATELIER_COMMENT_MIN_SECONDS', 2),
+
+        'rate_limits' => [
+            'identity_per_minute' => (int) env('ATELIER_COMMENT_IDENTITY_RATE', 5),
+            'posts_per_minute_per_commenter' => (int) env('ATELIER_COMMENT_POST_RATE', 10),
+            'posts_per_minute_per_ip' => (int) env('ATELIER_COMMENT_POST_IP_RATE', 20),
+        ],
+    ],
+
 ];
