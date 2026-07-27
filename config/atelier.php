@@ -71,6 +71,13 @@ return [
     | alone would not catch. `min_seconds_before_submit` is the floor on how
     | fast identity can plausibly be typed; set it to 0 to disable the check.
     |
+    | DEPLOYMENT: the per-IP ceiling is only as good as `request()->ip()`. Behind
+    | a load balancer or CDN with no trusted-proxy configuration, every visitor
+    | resolves to the proxy's address and that ceiling becomes a single global
+    | budget — a self-inflicted outage rather than a control. Configure
+    | `trustProxies()` in bootstrap/app.php before relying on it in production,
+    | or raise it out of the way and lean on the per-commenter limit.
+    |
     | See docs/atelier.specs.md §10 (security checklist).
     |
     */

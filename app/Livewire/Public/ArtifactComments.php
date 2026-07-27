@@ -24,9 +24,11 @@ use Livewire\Component;
  * authorization always re-resolve the acting User server-side — never from a public
  * property — so a tampered client cannot impersonate another User.
  *
- * Because the surface is open to anyone holding a project link, every write path
- * here is rate limited and screened for automation before it mints a durable row.
- * See config/atelier.php ('comments') for the limits.
+ * Because the surface is open to anyone holding a project link, the three paths a
+ * stranger can reach — identity capture, posting, replying — are rate limited and
+ * screened for automation before they mint a durable row. Resolving and deleting
+ * are not: those are gated on authorization instead, and no anonymous visitor can
+ * reach them. See config/atelier.php ('comments') for the limits.
  */
 class ArtifactComments extends Component
 {
@@ -70,6 +72,13 @@ class ArtifactComments extends Component
 
     /** When this visitor first opened the feedback rail — the baseline for the submit-timing floor. */
     private const OPENED_AT_KEY = 'atelier.comment_form_opened_at';
+
+    /** Rate-limiter key prefixes, completed with the address or commenter they bound. */
+    private const IDENTITY_LIMIT_KEY = 'comment-identity:';
+
+    private const POST_IP_LIMIT_KEY = 'comment-post-ip:';
+
+    private const POST_USER_LIMIT_KEY = 'comment-post-user:';
 
     /** The long-lived cookie that re-attributes a returning visitor (ADR-0003). */
     private const COOKIE_NAME = 'atelier_commenter';
@@ -132,11 +141,11 @@ class ArtifactComments extends Component
      */
     public function saveIdentity(): void
     {
-        if ($this->trippedHoneypot() || $this->submittedTooFast()) {
+        if (! $this->withinLimit(self::IDENTITY_LIMIT_KEY.request()->ip(), $this->limit('identity_per_minute'), 'captureEmail')) {
             return;
         }
 
-        if (! $this->withinLimit('comment-identity:'.request()->ip(), $this->limit('identity_per_minute'), 'captureEmail')) {
+        if ($this->trippedHoneypot() || $this->submittedTooFast()) {
             return;
         }
 
@@ -190,11 +199,11 @@ class ArtifactComments extends Component
             return;
         }
 
-        if ($this->trippedHoneypot()) {
+        if (! $this->withinPostingLimits($commenter, 'draft')) {
             return;
         }
 
-        if (! $this->withinPostingLimits($commenter, 'draft')) {
+        if ($this->trippedHoneypot()) {
             return;
         }
 
@@ -226,13 +235,13 @@ class ArtifactComments extends Component
             return;
         }
 
-        if ($this->trippedHoneypot()) {
-            return;
-        }
-
         $root = $this->artifact->comments()->roots()->findOrFail($rootId);
 
         if (! $this->withinPostingLimits($commenter, 'replyDraft')) {
+            return;
+        }
+
+        if ($this->trippedHoneypot()) {
             return;
         }
 
@@ -319,10 +328,22 @@ class ArtifactComments extends Component
     private function submittedTooFast(): bool
     {
         $floor = (int) config('atelier.comments.min_seconds_before_submit');
+
+        if ($floor <= 0) {
+            return false;
+        }
+
         $openedAt = session(self::OPENED_AT_KEY);
 
-        if ($floor <= 0 || ! is_int($openedAt)) {
-            return false;
+        if (! is_int($openedAt)) {
+            // No baseline, so this submission has no provenance: mount() writes the
+            // key on first render, and a caller that replays the Livewire snapshot
+            // without the session cookie never gets one. Fail closed, but stamp a
+            // baseline first, so a human whose session merely expired succeeds on
+            // their next attempt while a cookie-less replay never does.
+            session([self::OPENED_AT_KEY => now()->getTimestamp()]);
+
+            return true;
         }
 
         return (now()->getTimestamp() - $openedAt) < $floor;
@@ -336,11 +357,11 @@ class ArtifactComments extends Component
     private function withinPostingLimits(User $commenter, string $errorField): bool
     {
         return $this->withinLimit(
-            'comment-post-ip:'.request()->ip(),
+            self::POST_IP_LIMIT_KEY.request()->ip(),
             $this->limit('posts_per_minute_per_ip'),
             $errorField,
         ) && $this->withinLimit(
-            'comment-post-user:'.$commenter->id,
+            self::POST_USER_LIMIT_KEY.$commenter->id,
             $this->limit('posts_per_minute_per_commenter'),
             $errorField,
         );
@@ -349,7 +370,12 @@ class ArtifactComments extends Component
     /**
      * Consume one unit of a limiter, surfacing a friendly, non-fatal error on the
      * given field once the visitor has run out. Attempts are counted before the
-     * input is validated, so malformed submissions are not a free way to probe.
+     * input is validated and before the bot screens run, so neither malformed
+     * submissions nor tripped honeypots are a free way to keep making requests.
+     *
+     * Driven directly rather than through a named limiter (as the auth routes use,
+     * FortifyServiceProvider) because those are resolved by route middleware, and
+     * these are Livewire actions on a page that has already passed through it.
      */
     private function withinLimit(string $key, int $perMinute, string $errorField): bool
     {
