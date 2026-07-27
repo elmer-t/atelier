@@ -259,3 +259,49 @@ it('persists the collapse preference to a long-lived cookie', function () {
     expect($cookie)->not->toBeNull()
         ->and($cookie->getValue())->toBe('1');
 });
+
+it('refuses a deactivated email and does not resurrect it as a new user', function () {
+    $blocked = User::factory()->client()->deactivated()->create(['email' => 'nuisance@example.com']);
+
+    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->set('captureName', 'Nuisance')
+        ->set('captureEmail', 'nuisance@example.com')
+        ->call('saveIdentity')
+        ->assertHasErrors('captureEmail')
+        ->assertSet('identified', false)
+        // The message says the address is unusable, not that someone blocked them.
+        ->assertSee('That email cannot be used to comment here.');
+
+    expect(User::where('email', 'nuisance@example.com')->count())->toBe(1)
+        ->and($blocked->fresh()->isDeactivated())->toBeTrue()
+        ->and($this->artifact->comments()->count())->toBe(0);
+});
+
+it('stops honouring a remembered identity once it is deactivated', function () {
+    $blocked = User::factory()->client()->deactivated()->create();
+
+    Livewire::withCookies(['atelier_commenter' => (string) $blocked->id])
+        ->test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->assertSet('identified', false)
+        ->set('draft', 'Still here.')
+        ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'hero'])
+        ->call('postComment')
+        ->assertHasErrors('draft');
+
+    expect($this->artifact->comments()->count())->toBe(0);
+});
+
+it('keeps a deactivated client’s existing comments visible', function () {
+    $blocked = User::factory()->client()->create(['name' => 'Nuisance Nell']);
+    Comment::factory()->create([
+        'artifact_id' => $this->artifact->id,
+        'user_id' => $blocked->id,
+        'body' => 'Left before the block.',
+    ]);
+
+    $blocked->forceFill(['deactivated_at' => now()])->save();
+
+    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
+        ->assertSee('Left before the block.')
+        ->assertSee('Nuisance Nell');
+});

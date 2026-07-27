@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\MarkdownRenderer;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ProjectViewController extends Controller
@@ -15,9 +16,14 @@ class ProjectViewController extends Controller
      * artifact is given, the first stage artifact (by sort order) is shown.
      * See docs/atelier.specs.md §7.1.
      */
-    public function show(Project $project, MarkdownRenderer $markdown, ?Artifact $artifact = null): View
+    public function show(Project $project, Request $request, MarkdownRenderer $markdown, ?Artifact $artifact = null): View
     {
-        $project->recordView();
+        // View counts describe the audience, so a Creator checking their own work
+        // — or following a comment link out of the Users panel — is not one.
+        if (! $request->user()?->isCreator()) {
+            $project->recordView();
+        }
+
         $project->load('artifacts.currentRevision');
 
         // Download-only files never open in the stage.

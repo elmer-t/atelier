@@ -129,6 +129,15 @@ class ArtifactComments extends Component
             return;
         }
 
+        if ($existing?->isDeactivated()) {
+            // The find-or-create would otherwise resurrect a Creator's deactivation
+            // on the next comment (#30). Say no more than that the address is
+            // unusable — whether someone blocked them is not theirs to learn.
+            $this->addError('captureEmail', __('That email cannot be used to comment here.'));
+
+            return;
+        }
+
         $user = $existing ?? User::create([
             'name' => $validated['captureName'],
             'email' => $validated['captureEmail'],
@@ -259,24 +268,35 @@ class ArtifactComments extends Component
     /**
      * The acting commenter, re-resolved server-side on every action: a logged-in
      * User, else the session/cookie-remembered passwordless Client, else null.
+     *
+     * A deactivated User is nobody here — otherwise the session or the year-long
+     * return-visit cookie would keep letting them post after being cut off (#30).
      */
     private function currentCommenter(): ?User
     {
-        if (Auth::check()) {
-            return Auth::user();
+        $user = Auth::user();
+
+        if ($user instanceof User) {
+            return $user->isDeactivated() ? null : $user;
         }
 
         $id = session(self::SESSION_KEY) ?? request()->cookie(self::COOKIE_NAME);
 
-        if ($id !== null && ($user = User::find($id)) !== null) {
-            if (session(self::SESSION_KEY) === null) {
-                session([self::SESSION_KEY => $user->id]);
-            }
-
-            return $user;
+        if ($id === null) {
+            return null;
         }
 
-        return null;
+        $remembered = User::query()->whereKey((string) $id)->first();
+
+        if ($remembered === null || $remembered->isDeactivated()) {
+            return null;
+        }
+
+        if (session(self::SESSION_KEY) === null) {
+            session([self::SESSION_KEY => $remembered->id]);
+        }
+
+        return $remembered;
     }
 
     private function requireCommenter(): ?User
