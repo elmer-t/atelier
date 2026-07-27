@@ -80,6 +80,8 @@
                         <flux:button size="xs" variant="ghost" icon="arrow-top-right-on-square" inset
                             :href="$link" target="_blank" rel="noopener" />
                     </flux:tooltip>
+                    {{-- Reissue is destructive, so it sits past a divider rather than a mis-click away from copy. --}}
+                    <div class="mx-2 h-3.5 w-px bg-zinc-200 dark:bg-zinc-700"></div>
                     <flux:tooltip content="Reissue — revokes this link and its sandboxed HTML immediately, without archiving the project">
                         <flux:button size="xs" variant="ghost" icon="arrow-path" inset wire:click="reissueLink"
                             wire:confirm="Revoke and reissue this link? The current link (including any sandboxed HTML) stops working immediately." />
