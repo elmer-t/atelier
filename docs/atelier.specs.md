@@ -106,6 +106,7 @@ App-origin artifacts (markdown, files) are always streamed through the app, so t
 - Password entry sets a per-project session flag (e.g. keyed by project id in the session store).
 - No expiry beyond normal session lifetime.
 - Rotating a project's password should invalidate existing sessions for that project (simplest: bump a per-project token/version included in the session key).
+- A **signed-in Creator skips the gate entirely** — they set the password and read every project from the admin area, so it would only stand between them and their own content (notably when following a comment link out of the Users panel). Their reads are also excluded from a project's view counts, which describe the audience. Archived and expired projects still 404 for everyone, Creator included (§9).
 
 ---
 

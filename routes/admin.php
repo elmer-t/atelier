@@ -3,6 +3,9 @@
 use App\Http\Controllers\ArtifactFileController;
 use App\Livewire\Admin\Projects\Index as ProjectsIndex;
 use App\Livewire\Admin\Projects\Manage as ProjectsManage;
+use App\Livewire\Admin\Users\AgentAccess;
+use App\Livewire\Admin\Users\Index as UsersIndex;
+use App\Livewire\Admin\Users\Show as UsersShow;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'creator'])->prefix('admin')->group(function () {
@@ -17,4 +20,11 @@ Route::middleware(['auth', 'verified', 'creator'])->prefix('admin')->group(funct
     Route::get('projects/{project}/artifacts/{artifact}/preview', [ArtifactFileController::class, 'show'])
         ->scopeBindings()
         ->name('admin.projects.artifact-preview');
+
+    Route::livewire('users', UsersIndex::class)->name('admin.users');
+
+    // Declared before the `{user}` binding so the agent panel is reachable before
+    // an Agent User has ever been provisioned.
+    Route::livewire('users/agent', AgentAccess::class)->name('admin.users.agent');
+    Route::livewire('users/{user}', UsersShow::class)->name('admin.users.show');
 });

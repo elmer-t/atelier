@@ -23,6 +23,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string $name
  * @property string $email
  * @property UserRole $role
+ * @property Carbon|null $deactivated_at
  * @property Carbon|null $email_verified_at
  * @property string|null $password
  * @property string|null $two_factor_secret
@@ -47,6 +48,7 @@ class User extends Authenticatable implements PasskeyUser
     protected function casts(): array
     {
         return [
+            'deactivated_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
@@ -79,6 +81,29 @@ class User extends Authenticatable implements PasskeyUser
     public function isHuman(): bool
     {
         return $this->role->isHuman();
+    }
+
+    /**
+     * Whether a Creator has cut this User off. Their existing Comments stay
+     * visible; what stops is leaving new ones (#30).
+     */
+    public function isDeactivated(): bool
+    {
+        return $this->deactivated_at !== null;
+    }
+
+    /**
+     * Cut this User off from leaving new feedback, keeping everything they have
+     * already said. Not a timestamp anyone edits by hand — go through here.
+     */
+    public function deactivate(): void
+    {
+        $this->forceFill(['deactivated_at' => now()])->save();
+    }
+
+    public function reactivate(): void
+    {
+        $this->forceFill(['deactivated_at' => null])->save();
     }
 
     /**

@@ -65,6 +65,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * A User a Creator has cut off: kept for their history, barred from commenting.
+     */
+    public function deactivated(): static
+    {
+        return $this->state(fn () => [
+            'deactivated_at' => now(),
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static
