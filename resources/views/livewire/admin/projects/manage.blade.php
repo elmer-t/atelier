@@ -76,6 +76,10 @@
                     <flux:tooltip content="Copy link">
                         <flux:button size="xs" variant="ghost" icon="clipboard" x-on:click="copy" inset />
                     </flux:tooltip>
+                    <flux:tooltip content="Open link in a new tab">
+                        <flux:button size="xs" variant="ghost" icon="arrow-top-right-on-square" inset
+                            :href="$link" target="_blank" rel="noopener" />
+                    </flux:tooltip>
                     <flux:tooltip content="Reissue — revokes this link and its sandboxed HTML immediately, without archiving the project">
                         <flux:button size="xs" variant="ghost" icon="arrow-path" inset wire:click="reissueLink"
                             wire:confirm="Revoke and reissue this link? The current link (including any sandboxed HTML) stops working immediately." />

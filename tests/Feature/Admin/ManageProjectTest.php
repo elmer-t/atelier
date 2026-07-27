@@ -129,6 +129,17 @@ it('renders the manage page with the artifact list and the settings modal', func
         ->assertSee('project-settings', escape: false);
 });
 
+it('offers the shareable link as a new-tab link', function () {
+    $project = Project::factory()->public()->create();
+
+    $this->get(route('admin.projects.manage', $project))
+        ->assertOk()
+        ->assertSeeInOrder([
+            'href="'.route('project.show', $project).'"',
+            'target="_blank"',
+        ], escape: false);
+});
+
 it('mirrors the segmented controls back onto the toggles', function () {
     $project = Project::factory()->private('secret')->create();
 
