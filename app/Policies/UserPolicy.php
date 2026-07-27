@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
 use App\Models\User;
 
 /**
@@ -36,16 +35,18 @@ class UserPolicy
 
     /**
      * Deleting a User cascade-deletes the Comments they authored, which is why
-     * deactivation is the default for Clients. Refused for the Agent, for oneself,
-     * and for the last remaining Creator.
+     * deactivation is the default for Clients. Refused for the Agent and for
+     * oneself.
+     *
+     * Refusing self-removal is also what keeps the install from reaching zero
+     * Creators: the actor here is always a Creator, so removing anyone else
+     * necessarily leaves at least them. A separate "is this the last Creator"
+     * count would be unreachable — the only way to be the last one and be the
+     * target is to be the actor, which this already refuses.
      */
     public function delete(User $user, User $target): bool
     {
         if (! $user->isCreator() || $target->isAgent()) {
-            return false;
-        }
-
-        if ($target->isCreator() && self::creatorCount() <= 1) {
             return false;
         }
 
@@ -74,10 +75,5 @@ class UserPolicy
     public function manageAgentToken(User $user): bool
     {
         return $user->isCreator();
-    }
-
-    private static function creatorCount(): int
-    {
-        return User::where('role', UserRole::Creator)->count();
     }
 }

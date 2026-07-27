@@ -63,6 +63,15 @@ class AgentProvisioner
     }
 
     /**
+     * How many tokens are live. More than one means a rollover is in progress —
+     * both keep working until revoked.
+     */
+    public function tokenCount(): int
+    {
+        return $this->existingUser()?->tokens()->count() ?? 0;
+    }
+
+    /**
      * Mint a token scoped to the capability boundary. Additive rather than
      * replacing, so an in-flight agent keeps working while its replacement is
      * rolled out; `revoke()` is what closes the door. The plain-text value on the

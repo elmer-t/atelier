@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Projects;
 
 use App\Enums\ProjectStatus;
 use App\Enums\ProjectVisibility;
+use App\Livewire\Concerns\WithSortableColumns;
 use App\Models\Project;
 use App\Services\ProjectDeleter;
 use Flux\Flux;
@@ -21,13 +22,9 @@ use Livewire\WithPagination;
 class Index extends Component
 {
     use WithPagination;
+    use WithSortableColumns;
 
     /**
-     * The columns the table may be sorted by, mapped to the direction a fresh
-     * click starts at — names read best ascending, counts and dates newest-first.
-     * Doubles as the allow-list that keeps a hand-edited `?sortBy=` out of the
-     * `order by` clause.
-     *
      * @var array<string, string>
      */
     private const SORTABLE_COLUMNS = [
@@ -53,11 +50,18 @@ class Index extends Component
     #[Url(except: '')]
     public string $visibility = '';
 
-    #[Url(except: 'created_at')]
-    public string $sortBy = 'created_at';
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return self::SORTABLE_COLUMNS;
+    }
 
-    #[Url(except: 'desc')]
-    public string $sortDirection = 'desc';
+    protected function sortableResultProperty(): string
+    {
+        return 'projects';
+    }
 
     /**
      * @return LengthAwarePaginator<int, Project>
@@ -88,26 +92,6 @@ class Index extends Component
     public function isFiltered(): bool
     {
         return $this->search !== '' || $this->status !== '' || $this->visibility !== '';
-    }
-
-    /**
-     * Sort by the given column, flipping the direction when it is already the
-     * active one. Unknown columns are ignored.
-     */
-    public function sort(string $column): void
-    {
-        if (! array_key_exists($column, self::SORTABLE_COLUMNS)) {
-            return;
-        }
-
-        $this->sortDirection = $this->sortBy === $column
-            ? ($this->sortedDirection() === 'asc' ? 'desc' : 'asc')
-            : self::SORTABLE_COLUMNS[$column];
-
-        $this->sortBy = $column;
-
-        $this->resetPage();
-        unset($this->projects);
     }
 
     public function clearFilters(): void
@@ -163,23 +147,5 @@ class Index extends Component
     public function render(): View
     {
         return view('livewire.admin.projects.index');
-    }
-
-    /**
-     * The active sort column, falling back to the default when the query string
-     * names something unsortable. The table headers read this rather than the
-     * raw property so the highlighted column always matches the `order by`.
-     */
-    public function sortedColumn(): string
-    {
-        return array_key_exists($this->sortBy, self::SORTABLE_COLUMNS) ? $this->sortBy : 'created_at';
-    }
-
-    /**
-     * @return 'asc'|'desc'
-     */
-    public function sortedDirection(): string
-    {
-        return $this->sortDirection === 'asc' ? 'asc' : 'desc';
     }
 }

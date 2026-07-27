@@ -133,6 +133,47 @@ it('invites a creator by email without opening a registration route', function (
     expect(Route::has('register'))->toBeFalse();
 });
 
+// The invite is only worth anything if the invitee can finish it, so follow the
+// reset-password token all the way to the operator area.
+it('lets an invitee set their own password and reach the admin area', function () {
+    Notification::fake();
+    $this->withoutVite();
+
+    Livewire::test(Index::class)
+        ->set('inviteName', 'Sam Second')
+        ->set('inviteEmail', 'sam@example.test')
+        ->call('invite');
+
+    $invited = User::where('email', 'sam@example.test')->firstOrFail();
+
+    $token = null;
+    Notification::assertSentTo($invited, ResetPassword::class, function (ResetPassword $notification) use (&$token) {
+        $token = $notification->token;
+
+        return true;
+    });
+
+    // The invitee arrives as a guest, not in the inviting Creator's session.
+    auth()->logout();
+    $this->flushSession();
+
+    $this->post(route('password.update'), [
+        'token' => $token,
+        'email' => $invited->email,
+        'password' => 'a-password-they-chose',
+        'password_confirmation' => 'a-password-they-chose',
+    ])->assertSessionHasNoErrors();
+
+    $this->post(route('login.store'), [
+        'email' => $invited->email,
+        'password' => 'a-password-they-chose',
+    ]);
+
+    $this->assertAuthenticatedAs($invited->fresh());
+
+    $this->get(route('admin.users'))->assertOk();
+});
+
 it('rejects an invite for an email that already exists', function () {
     Notification::fake();
     User::factory()->client()->create(['email' => 'taken@example.test']);

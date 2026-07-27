@@ -2,6 +2,7 @@
 
 use App\Models\Artifact;
 use App\Models\Project;
+use App\Models\User;
 
 it('lists only active public projects on the index', function () {
     $public = Project::factory()->public()->create(['title' => 'Public One']);
@@ -29,6 +30,40 @@ it('redirects a private project to the password gate', function () {
 
     $this->get(route('project.show', $project))
         ->assertRedirect(route('project.gate', $project));
+});
+
+// The Creator set the password and reads every project from the admin area, so the
+// gate would only stand between them and their own content — notably when following
+// a comment link out of the Users panel (#30).
+it('lets a signed-in creator past the password gate', function () {
+    $project = Project::factory()->private()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create(['title' => 'Brief']);
+
+    $this->actingAs(User::factory()->create());
+
+    $this->get(route('project.artifact', ['project' => $project, 'artifact' => $artifact]))
+        ->assertOk()
+        ->assertSee('Brief');
+});
+
+it('still hard-disables an archived project for a signed-in creator', function () {
+    $project = Project::factory()->public()->archived()->create();
+
+    $this->actingAs(User::factory()->create());
+
+    $this->get(route('project.show', $project))->assertNotFound();
+});
+
+it('does not count a creator reading their own project as a view', function () {
+    $project = Project::factory()->public()->create();
+    Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    $this->actingAs(User::factory()->create());
+
+    $this->get(route('project.show', $project))->assertOk();
+
+    expect($project->fresh()->view_count)->toBe(0)
+        ->and($project->fresh()->last_viewed_at)->toBeNull();
 });
 
 it('rejects an incorrect password', function () {

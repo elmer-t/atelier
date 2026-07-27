@@ -54,14 +54,10 @@ class AgentAccess extends Component
         return $this->provisioner()->currentToken();
     }
 
-    /**
-     * How many tokens are live. More than one means a rollover is in progress —
-     * both keep working until revoked.
-     */
     #[Computed]
     public function tokenCount(): int
     {
-        return $this->provisioner()->existingUser()?->tokens()->count() ?? 0;
+        return $this->provisioner()->tokenCount();
     }
 
     /**
@@ -73,22 +69,22 @@ class AgentAccess extends Component
         return AgentAbilities::all();
     }
 
-    public function mint(AgentProvisioner $provisioner): void
+    public function mint(): void
     {
         $this->authorize('manageAgentToken', User::class);
 
-        $this->plainTextToken = $provisioner->mint()->plainTextToken;
+        $this->plainTextToken = $this->provisioner()->mint()->plainTextToken;
 
         $this->forgetAgentState();
 
         Flux::toast(variant: 'success', text: __('Token minted. Copy it now — it is shown only once.'));
     }
 
-    public function revoke(AgentProvisioner $provisioner): void
+    public function revoke(): void
     {
         $this->authorize('manageAgentToken', User::class);
 
-        $count = $provisioner->revoke();
+        $count = $this->provisioner()->revoke();
 
         $this->plainTextToken = null;
         $this->forgetAgentState();
@@ -110,6 +106,11 @@ class AgentAccess extends Component
         unset($this->agent, $this->token, $this->tokenCount);
     }
 
+    /**
+     * Livewire resolves `#[Computed]` methods as property reads, which cannot take
+     * method injection — so every path in this component reaches the provisioner
+     * the same way rather than half by injection and half by the container.
+     */
     private function provisioner(): AgentProvisioner
     {
         return app(AgentProvisioner::class);

@@ -1,5 +1,3 @@
-@use('App\Enums\UserRole')
-
 <div class="mx-auto w-full max-w-3xl px-6 py-8">
     <flux:button size="sm" variant="ghost" icon="arrow-left" :href="route('admin.users')" wire:navigate class="mb-4 -ml-2">
         Users
@@ -14,11 +12,7 @@
                 <flux:subheading>{{ $user->email }}</flux:subheading>
 
                 <div class="mt-2 flex items-center gap-1">
-                    <flux:badge size="sm" :color="match ($user->role) {
-                        UserRole::Creator => 'red',
-                        UserRole::Client => 'zinc',
-                        UserRole::Agent => 'purple',
-                    }">
+                    <flux:badge size="sm" :color="$user->role->color()">
                         {{ $user->role->label() }}
                     </flux:badge>
 

@@ -93,6 +93,20 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Cut this User off from leaving new feedback, keeping everything they have
+     * already said. Not a timestamp anyone edits by hand — go through here.
+     */
+    public function deactivate(): void
+    {
+        $this->forceFill(['deactivated_at' => now()])->save();
+    }
+
+    public function reactivate(): void
+    {
+        $this->forceFill(['deactivated_at' => null])->save();
+    }
+
+    /**
      * Get the user's initials
      */
     public function initials(): string

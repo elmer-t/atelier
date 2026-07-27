@@ -1,4 +1,5 @@
 @use('App\Enums\UserRole')
+@use('Illuminate\Support\Carbon')
 
 <div class="mx-auto w-full max-w-5xl px-6 py-8">
     <div class="mb-6 flex items-center justify-between">
@@ -36,7 +37,11 @@
 
     @if ($this->users->isEmpty())
         <div class="rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
-            <flux:text>No users match these filters.</flux:text>
+            @if ($this->isFiltered)
+                <flux:text>No users match these filters.</flux:text>
+            @else
+                <flux:text>Nobody here yet. Invite a creator, or wait for your first client to leave feedback.</flux:text>
+            @endif
         </div>
     @else
         <flux:table :paginate="$this->users">
@@ -50,8 +55,10 @@
                 <flux:table.column sortable :sorted="$this->sortedColumn() === 'comments_count'" :direction="$this->sortedDirection()" wire:click="sort('comments_count')">
                     Comments
                 </flux:table.column>
+                {{-- "Last comment", not "last active": there is no login to track, and
+                     Atelier records project views without recording who viewed. --}}
                 <flux:table.column sortable :sorted="$this->sortedColumn() === 'comments_max_created_at'" :direction="$this->sortedDirection()" wire:click="sort('comments_max_created_at')">
-                    Last active
+                    Last comment
                 </flux:table.column>
                 <flux:table.column sortable :sorted="$this->sortedColumn() === 'created_at'" :direction="$this->sortedDirection()" wire:click="sort('created_at')">
                     Joined
@@ -70,11 +77,7 @@
                         </flux:table.cell>
                         <flux:table.cell>
                             <div class="flex items-center gap-1">
-                                <flux:badge size="sm" :color="match ($user->role) {
-                                    UserRole::Creator => 'red',
-                                    UserRole::Client => 'zinc',
-                                    UserRole::Agent => 'purple',
-                                }">
+                                <flux:badge size="sm" :color="$user->role->color()">
                                     {{ $user->role->label() }}
                                 </flux:badge>
 
@@ -88,7 +91,7 @@
                         <flux:table.cell>{{ $user->comments_count }}</flux:table.cell>
                         <flux:table.cell>
                             @if ($user->comments_max_created_at)
-                                {{ \Illuminate\Support\Carbon::parse($user->comments_max_created_at)->diffForHumans() }}
+                                {{ Carbon::parse($user->comments_max_created_at)->diffForHumans() }}
                             @else
                                 <span class="text-zinc-400">Never commented</span>
                             @endif

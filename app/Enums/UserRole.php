@@ -24,6 +24,19 @@ enum UserRole: string
     }
 
     /**
+     * The badge colour this role wears in the admin area, so every surface reads
+     * the operator (red), the audience (zinc) and the non-human (purple) alike.
+     */
+    public function color(): string
+    {
+        return match ($this) {
+            self::Creator => 'red',
+            self::Client => 'zinc',
+            self::Agent => 'purple',
+        };
+    }
+
+    /**
      * Whether this role is played by a human. Distinguishes human edits from agent
      * edits when Revision provenance is surfaced (#15/#17).
      */

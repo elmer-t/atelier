@@ -39,25 +39,6 @@ it('lists the comments a client left, each linking to the artifact it was left o
         ->assertSee(route('project.artifact', ['project' => $project, 'artifact' => $artifact]), escape: false);
 });
 
-it('leaves a creator following a comment link on the artifact rather than the password gate', function () {
-    $project = Project::factory()->private()->create();
-    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create(['title' => 'Brief']);
-
-    $this->get(route('project.artifact', ['project' => $project, 'artifact' => $artifact]))
-        ->assertOk()
-        ->assertSee('Brief');
-});
-
-it('does not count a creator reading their own project as a view', function () {
-    $project = Project::factory()->public()->create();
-    Artifact::factory()->for($project)->markdown('# Brief')->create();
-
-    $this->get(route('project.show', $project))->assertOk();
-
-    expect($project->fresh()->view_count)->toBe(0)
-        ->and($project->fresh()->last_viewed_at)->toBeNull();
-});
-
 it('says so when a client has left no feedback', function () {
     $client = User::factory()->client()->create(['name' => 'Quiet Quinn']);
 

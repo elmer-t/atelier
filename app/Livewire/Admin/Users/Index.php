@@ -3,6 +3,8 @@
 namespace App\Livewire\Admin\Users;
 
 use App\Enums\UserRole;
+use App\Livewire\Concerns\ManagesUserAccounts;
+use App\Livewire\Concerns\WithSortableColumns;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use Flux\Flux;
@@ -25,19 +27,15 @@ use Livewire\WithPagination;
 #[Title('Users')]
 class Index extends Component
 {
+    use ManagesUserAccounts;
     use WithPagination;
+    use WithSortableColumns;
 
     /**
-     * The columns the table may be sorted by, mapped to the direction a fresh
-     * click starts at — names read best ascending, counts and dates newest-first.
-     * Doubles as the allow-list that keeps a hand-edited `?sortBy=` out of the
-     * `order by` clause.
-     *
      * @var array<string, string>
      */
     private const SORTABLE_COLUMNS = [
         'name' => 'asc',
-        'email' => 'asc',
         'role' => 'asc',
         'comments_count' => 'desc',
         'comments_max_created_at' => 'desc',
@@ -52,15 +50,22 @@ class Index extends Component
     #[Url(except: '')]
     public string $role = '';
 
-    #[Url(except: 'created_at')]
-    public string $sortBy = 'created_at';
-
-    #[Url(except: 'desc')]
-    public string $sortDirection = 'desc';
-
     public string $inviteName = '';
 
     public string $inviteEmail = '';
+
+    /**
+     * @return array<string, string>
+     */
+    protected function sortableColumns(): array
+    {
+        return self::SORTABLE_COLUMNS;
+    }
+
+    protected function sortableResultProperty(): string
+    {
+        return 'users';
+    }
 
     /**
      * The `creator` middleware already guards the route; re-asserting the policy
@@ -103,26 +108,6 @@ class Index extends Component
     public function isFiltered(): bool
     {
         return $this->search !== '' || $this->role !== '';
-    }
-
-    /**
-     * Sort by the given column, flipping the direction when it is already the
-     * active one. Unknown columns are ignored.
-     */
-    public function sort(string $column): void
-    {
-        if (! array_key_exists($column, self::SORTABLE_COLUMNS)) {
-            return;
-        }
-
-        $this->sortDirection = $this->sortBy === $column
-            ? ($this->sortedDirection() === 'asc' ? 'desc' : 'asc')
-            : self::SORTABLE_COLUMNS[$column];
-
-        $this->sortBy = $column;
-
-        $this->resetPage();
-        unset($this->users);
     }
 
     public function clearFilters(): void
@@ -180,61 +165,27 @@ class Index extends Component
 
     public function deactivate(User $user): void
     {
-        $this->authorize('deactivate', $user);
-
-        $user->forceFill(['deactivated_at' => now()])->save();
+        $this->deactivateAccount($user);
 
         unset($this->users);
-
-        Flux::toast(variant: 'success', text: __('That email can no longer leave feedback. Their comments are untouched.'));
     }
 
     public function reactivate(User $user): void
     {
-        $this->authorize('reactivate', $user);
-
-        $user->forceFill(['deactivated_at' => null])->save();
+        $this->reactivateAccount($user);
 
         unset($this->users);
-
-        Flux::toast(variant: 'success', text: __('Reactivated. They can comment again.'));
     }
 
-    /**
-     * Remove a User outright. Their Comments go with them — the `comments` table
-     * cascades on `user_id` — which is why a Client is normally deactivated instead.
-     */
     public function delete(User $user): void
     {
-        $this->authorize('delete', $user);
-
-        $user->delete();
+        $this->deleteAccount($user);
 
         unset($this->users);
-
-        Flux::toast(variant: 'success', text: __('User deleted.'));
     }
 
     public function render(): View
     {
         return view('livewire.admin.users.index');
-    }
-
-    /**
-     * The active sort column, falling back to the default when the query string
-     * names something unsortable. The table headers read this rather than the
-     * raw property so the highlighted column always matches the `order by`.
-     */
-    public function sortedColumn(): string
-    {
-        return array_key_exists($this->sortBy, self::SORTABLE_COLUMNS) ? $this->sortBy : 'created_at';
-    }
-
-    /**
-     * @return 'asc'|'desc'
-     */
-    public function sortedDirection(): string
-    {
-        return $this->sortDirection === 'asc' ? 'asc' : 'desc';
     }
 }

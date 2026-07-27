@@ -76,12 +76,14 @@
         </div>
 
         @if ($this->agent)
+            @php($agentComments = $this->agent->comments()->count())
+
             <div class="border-t border-zinc-200 px-5 py-4 dark:border-zinc-700">
                 <flux:heading size="sm">Agent user</flux:heading>
                 <flux:text size="sm" class="mt-1 text-zinc-400">
                     {{ $this->agent->name }} · {{ $this->agent->email }} ·
                     <a href="{{ route('admin.users.show', $this->agent) }}" wire:navigate class="hover:underline">
-                        {{ $this->agent->comments()->count() }} {{ Str::plural('comment', $this->agent->comments()->count()) }}
+                        {{ $agentComments }} {{ Str::plural('comment', $agentComments) }}
                     </a>
                 </flux:text>
             </div>

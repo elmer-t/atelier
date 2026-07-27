@@ -3,9 +3,9 @@
 namespace App\Livewire\Admin\Users;
 
 use App\Http\Middleware\EnsureProjectAccessible;
+use App\Livewire\Concerns\ManagesUserAccounts;
 use App\Models\Comment;
 use App\Models\User;
-use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Computed;
@@ -26,6 +26,7 @@ use Livewire\WithPagination;
 #[Title('User')]
 class Show extends Component
 {
+    use ManagesUserAccounts;
     use WithPagination;
 
     public User $user;
@@ -57,34 +58,21 @@ class Show extends Component
 
     public function deactivate(): void
     {
-        $this->authorize('deactivate', $this->user);
-
-        $this->user->forceFill(['deactivated_at' => now()])->save();
-
-        Flux::toast(variant: 'success', text: __('That email can no longer leave feedback. Their comments are untouched.'));
+        $this->deactivateAccount($this->user);
     }
 
     public function reactivate(): void
     {
-        $this->authorize('reactivate', $this->user);
-
-        $this->user->forceFill(['deactivated_at' => null])->save();
-
-        Flux::toast(variant: 'success', text: __('Reactivated. They can comment again.'));
+        $this->reactivateAccount($this->user);
     }
 
     /**
-     * Remove this User along with every Comment they authored — the `comments`
-     * table cascades on `user_id`. There is nothing left to show afterwards, so
-     * the Creator lands back on the list.
+     * There is nothing left to show once this User is gone, so the Creator lands
+     * back on the list.
      */
     public function delete(): void
     {
-        $this->authorize('delete', $this->user);
-
-        $this->user->delete();
-
-        Flux::toast(variant: 'success', text: __('User deleted, along with their comments.'));
+        $this->deleteAccount($this->user);
 
         $this->redirectRoute('admin.users', navigate: true);
     }
