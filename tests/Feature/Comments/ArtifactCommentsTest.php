@@ -15,6 +15,11 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->project = Project::factory()->public()->create();
     $this->artifact = Artifact::factory()->for($this->project)->markdown('# Brief')->create(['title' => 'Brief']);
+
+    // These tests submit instantly, which the submit-timing floor exists to reject.
+    // They are about what commenting does, not about who is allowed to reach it;
+    // the abuse controls have their own coverage in CommentAbuseControlsTest.
+    config(['atelier.comments.min_seconds_before_submit' => 0]);
 });
 
 function identify($component, string $name = 'Jane Doe', string $email = 'jane@example.com')
