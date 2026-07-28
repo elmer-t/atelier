@@ -5,7 +5,6 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <flux:heading size="xl">Users</flux:heading>
-            <flux:subheading>Everyone with an account here — creators, clients who left feedback, and the agent.</flux:subheading>
         </div>
 
         <flux:modal.trigger name="invite-creator">

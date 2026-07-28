@@ -5,7 +5,6 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <flux:heading size="xl">Projects</flux:heading>
-            <flux:subheading>Concepts and designs you present to clients.</flux:subheading>
         </div>
 
         <flux:modal.trigger name="create-project">
@@ -132,10 +131,6 @@
                 @endforeach
             </flux:table.rows>
         </flux:table>
-
-        <flux:text size="sm" class="mt-3 text-zinc-400">
-            View counts are aggregate only — Atelier records when a project was opened, never who opened it.
-        </flux:text>
     @endif
 
     <flux:modal name="create-project" class="md:w-96">
