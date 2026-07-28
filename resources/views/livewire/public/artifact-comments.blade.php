@@ -35,7 +35,6 @@
         'lg:w-14' => $collapsed,
         'lg:w-96' => ! $collapsed,
     ])
-    x-bind:class="collapsed ? 'lg:w-14' : 'lg:w-96'"
     x-data="{
         collapsed: @js($collapsed),
         gutter: @js($artifact->isMarkdown()),
@@ -128,8 +127,20 @@
             return null;
         },
 
+        /**
+         * The rail's own width is the one thing Alpine cannot hold with `x-bind:class`.
+         * Livewire clones the incoming HTML against a stale scope before morphing it in,
+         * so a bound class on the component root is re-evaluated with the previous value
+         * of `collapsed` and merged into the server's class list — leaving both widths on
+         * the element, where the wider one wins. So the server owns the width class and
+         * the swap is written here by hand, to spare the rail a round trip before it moves.
+         */
         setCollapsed(value) {
             this.collapsed = value;
+
+            this.root()?.classList.toggle('lg:w-14', value);
+            this.root()?.classList.toggle('lg:w-96', ! value);
+
             $wire.setCollapsed(value);
             this.$nextTick(() => this.layout());
         },
@@ -746,8 +757,10 @@
                     <span class="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">{{ $this->threads->count() }}</span>
                     <button type="button" x-on:click.stop="setCollapsed(true)" title="{{ __('Collapse feedback') }}" aria-label="{{ __('Collapse feedback') }}"
                         class="text-zinc-400 transition hover:text-zinc-800 dark:hover:text-zinc-100">
-                        <span class="hidden text-sm leading-none lg:inline">»</span>
-                        <span class="text-sm leading-none lg:hidden">⌃</span>
+                        {{-- Sized to match the chevrons that reopen the rail, so the pair
+                             reads as one control rather than two. --}}
+                        <span class="hidden text-lg leading-none lg:inline">»</span>
+                        <span class="text-base leading-none lg:hidden">⌃</span>
                     </button>
                 </div>
             </div>

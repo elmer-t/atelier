@@ -265,6 +265,32 @@ it('persists the collapse preference to a long-lived cookie', function () {
         ->and($cookie->getValue())->toBe('1');
 });
 
+/**
+ * Livewire re-evaluates the incoming HTML against a stale Alpine scope before morphing
+ * it in, so a bound class on the component root comes back merged with the server's own
+ * class list — after a couple of toggles the rail carried both widths and the wider one
+ * won. The width class is the server's alone; nothing may bind it on the root.
+ */
+it('renders exactly one rail width, and never binds it from the root', function () {
+    $railClasses = function (string $html): array {
+        preg_match('/class="(feedback-rail[^"]*)"/', $html, $match);
+
+        return array_values(array_filter(
+            preg_split('/\s+/', $match[1] ?? ''),
+            fn (string $class) => str_starts_with($class, 'lg:w-'),
+        ));
+    };
+
+    $component = Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact]);
+
+    expect($railClasses($component->html()))->toBe(['lg:w-96'])
+        ->and($component->html())->not->toMatch('/x-bind:class="[^"]*collapsed/');
+
+    $component->call('setCollapsed', true);
+
+    expect($railClasses($component->html()))->toBe(['lg:w-14']);
+});
+
 it('refuses a deactivated email and does not resurrect it as a new user', function () {
     $blocked = User::factory()->client()->deactivated()->create(['email' => 'nuisance@example.com']);
 
