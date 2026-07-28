@@ -32,6 +32,26 @@ it('offers a control for each panel and for focus mode', function () {
     $response->assertSee('data-stage-nav', escape: false);
 });
 
+/**
+ * The bar names the app, the project and the panel each toggle opens, standing directly
+ * above the columns it describes. The pages panel used to repeat all three in its own
+ * header; it now opens straight onto the list of pages.
+ */
+it('leaves the naming to the bar and starts the pages panel on its list', function () {
+    $project = Project::factory()->public()->create(['title' => 'Harbor District']);
+    Artifact::factory()->for($project)->markdown('# Brief')->create(['title' => 'Concept Brief']);
+
+    $html = $this->get(route('project.show', $project))->assertOk()->getContent();
+
+    preg_match('/<aside data-stage-nav.*?<\/aside>/s', $html, $match);
+    $sidebar = $match[0] ?? '';
+
+    expect($sidebar)->toContain('Concept Brief')
+        ->and($sidebar)->not->toContain('Harbor District')
+        ->and($sidebar)->not->toContain(config('app.name'))
+        ->and($sidebar)->not->toContain('Pages');
+});
+
 it('offers all three appearances', function () {
     $project = Project::factory()->public()->create();
     Artifact::factory()->for($project)->markdown('# Brief')->create();

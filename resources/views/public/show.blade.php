@@ -6,18 +6,11 @@
 
     <x-public.stage-chrome :project="$project" :current="$current">
         <div class="stage-columns flex min-h-screen flex-col pt-[var(--stage-bar-height)] lg:flex-row">
-            {{-- Sidebar --}}
+            {{-- Sidebar. The app name, the project and this panel's own name are all named
+                 in the stage bar directly above it, so the list starts at the top. --}}
             <aside data-stage-nav class="w-full shrink-0 border-b border-zinc-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-r dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="p-6">
-                    <p class="text-xs font-medium uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
-                        {{ config('app.name', 'Atelier') }}
-                    </p>
-                    <h1 class="mt-1 text-lg font-semibold tracking-tight">{{ $project->title }}</h1>
-                </div>
-
                 @if ($stageArtifacts->isNotEmpty())
-                    <nav class="px-3 pb-4">
-                        <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Pages</p>
+                    <nav class="px-3 py-4">
                         <ul class="space-y-0.5">
                             @foreach ($stageArtifacts as $artifact)
                                 @php($active = $current && $artifact->is($current))
