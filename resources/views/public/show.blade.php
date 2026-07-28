@@ -57,8 +57,12 @@
                 </div>
             @endif
 
-            <div class="px-6 py-4 text-xs text-zinc-400 dark:text-zinc-500">
+            {{-- The policy link belongs to the page, not to the feedback rail: a recipient who
+                 never comments is still owed it, and the rail's own notice only appears at the
+                 moment details are actually asked for. --}}
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-6 py-4 text-xs text-zinc-400 dark:text-zinc-500">
                 <a href="{{ route('home') }}" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">← Back to {{ config('app.name', 'Atelier') }}</a>
+                <a href="{{ route('privacy') }}" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">{{ __('Privacy Policy') }}</a>
             </div>
         </aside>
 

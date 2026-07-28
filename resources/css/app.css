@@ -115,18 +115,185 @@ select:focus[data-flux-control] {
     @apply ring-2 ring-amber-400 ring-offset-2 ring-offset-white dark:ring-offset-zinc-900;
 }
 
+/* The stage end of the bond, lit from the rail side (hovering a Thread or a minimap tick). */
+.atelier-anchor-lit.atelier-anchor {
+    @apply bg-amber-500/55;
+}
+.atelier-anchor-lit.atelier-anchor-block {
+    @apply bg-amber-500/20;
+}
+
 /* An anchor whose quote is absent from the current revision: say so, don't pretend. */
-.atelier-anchor-missing {
-    @apply hidden;
-}
-[data-anchor-found='no'] .atelier-anchor-missing {
-    @apply block;
-}
 [data-anchor-found='no'] .atelier-anchor-quote {
     @apply border-zinc-200 text-zinc-400 line-through dark:border-zinc-700;
 }
-[data-anchor-found='no'] {
-    @apply cursor-default;
+
+/* -----------------------------------------------------------------------------------------
+   The feedback rail. Threads are placed level with the text they are about, so separation is
+   whitespace, alignment and a 2px accent rule — no cards, no panels, no rounded outlines.
+   ----------------------------------------------------------------------------------------- */
+
+.rail-tether {
+    @apply pointer-events-none fixed inset-0 z-50 h-full w-full text-amber-400 dark:text-amber-500/70;
+}
+
+.rail-item {
+    @apply border-l-2 border-transparent pl-3 transition-[opacity,border-color] duration-150;
+}
+.rail-thread {
+    @apply cursor-pointer border-amber-300 dark:border-amber-500/55;
+}
+.rail-compose {
+    @apply border-amber-500;
+}
+
+/* Settled feedback recedes but stays reachable, and comes back on approach. */
+.rail-thread[data-anchor-resolved='yes'] {
+    @apply border-zinc-200 opacity-50 dark:border-zinc-700;
+}
+.rail-thread[data-anchor-resolved='yes']:hover,
+.rail-thread[data-anchor-resolved='yes'][data-rail-open='yes'] {
+    @apply opacity-100;
+}
+
+/* Detached from the current revision: the rule breaks up, the flag appears, and there is
+   nowhere in the page left to jump to. */
+.rail-thread[data-anchor-found='no'] {
+    @apply border-dashed border-amber-600;
+}
+.rail-detached,
+[data-anchor-found='no'] .rail-jump {
+    @apply hidden;
+}
+[data-anchor-found='no'] .rail-detached {
+    @apply mb-0.5 block;
+}
+
+/* Either end of the bond lights both. */
+.rail-thread[data-rail-lit='yes'],
+.rail-thread[data-rail-open='yes'] {
+    @apply border-amber-500;
+}
+
+/* Compact by default: byline plus one clamped line, opening to the full Thread. */
+.rail-body {
+    @apply line-clamp-1;
+}
+[data-rail-open='yes'] .rail-body {
+    @apply line-clamp-none;
+}
+.rail-open-only,
+.rail-close {
+    @apply hidden;
+}
+[data-rail-open='yes'] .rail-open-only {
+    @apply block;
+}
+[data-rail-open='yes'] .rail-close {
+    @apply inline;
+}
+[data-rail-open='yes'] .rail-reply-count {
+    @apply hidden;
+}
+
+.rail-reply {
+    @apply border-l border-zinc-200 pl-2.5 dark:border-zinc-800;
+}
+
+/* On desktop the alignment says what a Thread is about, so the quoted line is redundant —
+   unless the Thread is open, or its anchor no longer exists. */
+.rail-quote {
+    @apply hidden;
+}
+[data-rail-open='yes'] .rail-quote,
+[data-anchor-found='no'] .rail-quote {
+    @apply mb-1 block;
+}
+
+.rail-empty {
+    @apply absolute inset-x-5 top-6;
+}
+
+/* Threads the alignment has carried past an edge of the rail, one click away. */
+.rail-edge {
+    @apply absolute left-1/2 z-20 hidden -translate-x-1/2 rounded-full bg-zinc-900 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white opacity-75 dark:bg-zinc-50 dark:text-zinc-900;
+}
+.rail-edge.rail-edge-on {
+    @apply block;
+}
+.rail-edge:hover {
+    @apply opacity-100;
+}
+.rail-edge-top {
+    top: 0.35rem;
+}
+.rail-edge-bottom {
+    bottom: 0.35rem;
+}
+
+/* The minimap: the whole document's feedback distribution, down the seam between article
+   and rail. Depth is scroll-invariant, so only the viewport block moves per frame. */
+.rail-map {
+    @apply absolute inset-y-0 left-0 z-30 hidden w-3.5 overflow-hidden bg-zinc-900/[0.035] dark:bg-white/[0.04];
+}
+.rail-map-view {
+    @apply pointer-events-none absolute inset-x-px rounded-sm bg-zinc-900/10 dark:bg-white/10;
+}
+.rail-map-tick {
+    @apply absolute inset-x-0 -mt-[5px] block h-[11px] cursor-pointer px-[3px] py-1;
+}
+.rail-map-bar {
+    @apply block h-[3px] rounded-sm bg-zinc-500 transition-[height,background-color,box-shadow] duration-100 dark:bg-zinc-400;
+}
+.rail-map-tick[data-anchor-resolved='yes'] .rail-map-bar {
+    @apply bg-zinc-500/30 dark:bg-zinc-400/30;
+}
+/* Parked in the bay at the foot: no depth to place it at, because its text is gone. */
+.rail-map-tick[data-rail-placed='no'] .rail-map-bar {
+    @apply bg-amber-600/80;
+}
+.rail-map-tick:hover .rail-map-bar,
+.rail-map-tick[data-rail-lit='yes'] .rail-map-bar {
+    @apply h-[5px] bg-amber-500 shadow-[0_0_0_2px_rgb(245_158_11/0.28)];
+}
+.rail-map-bay {
+    @apply absolute inset-x-[3px] bottom-6 hidden h-px bg-amber-600/35;
+}
+
+@media (min-width: 1024px) {
+    .rail-map {
+        @apply block;
+    }
+    /* The strip gets its own lane; nothing else may sit in it. */
+    .rail-shell,
+    .rail-tab {
+        padding-left: 0.875rem;
+    }
+
+    .rail-layer {
+        @apply overflow-hidden;
+    }
+    .rail-item {
+        @apply absolute inset-x-5 top-0;
+        will-change: transform;
+    }
+}
+
+@media (max-width: 1023px) {
+    .rail-item + .rail-item {
+        @apply mt-5;
+    }
+    /* Stacked, there is no alignment to read the bond from — so the quote comes back. */
+    .rail-quote {
+        @apply mb-1 block;
+    }
+    .rail-empty {
+        @apply static;
+    }
+    .rail-edge,
+    .rail-tether {
+        @apply !hidden;
+    }
 }
 
 /* Per-paragraph comment affordance: a hover pin in the stage's left gutter. The pin sits in

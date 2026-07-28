@@ -1,8 +1,10 @@
 <?php
 
+use App\Livewire\Public\ArtifactComments;
 use App\Models\Artifact;
 use App\Models\Comment;
 use App\Models\Project;
+use Livewire\Livewire;
 
 /**
  * The feedback rail renders each Thread with the data attributes the client-side
@@ -61,4 +63,124 @@ it('carries the resolved state onto the anchor so a settled Thread reads as mute
     $this->get(route('project.artifact', [$project, $artifact]))
         ->assertOk()
         ->assertSee('data-anchor-resolved="yes"', escape: false);
+});
+
+/**
+ * Threads are placed level with the text they are about, so the placement pass has to be
+ * able to find them, and each one has to say where it wants to sit.
+ */
+it('marks each Thread as a placeable item so the rail can align it with its text', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown("# Brief\n\nThe timeline looks tight.")->create();
+
+    $thread = Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'The timeline looks tight.'],
+    ]);
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertSee('data-rail-item', escape: false)
+        ->assertSee('data-comment-id="'.$thread->id.'"', escape: false);
+});
+
+/**
+ * An artifact with no prose to quote anchors its feedback to a point instead. That depth is
+ * the only thing the placement pass and the minimap have to go on, so it has to be rendered.
+ */
+it('exposes a point anchor’s depth so it can be placed without a quote', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->html()->create();
+
+    Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'html_point', 'x' => 40.5, 'y' => 62.5],
+    ]);
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertSee('data-anchor-y="62.5"', escape: false);
+});
+
+/**
+ * The minimap: one tick per Thread, so the distribution of feedback down the document is
+ * readable at a glance and stays readable when the rail is collapsed.
+ */
+it('gives every Thread a minimap tick carrying its identity and settled state', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown("# Brief\n\nThe timeline looks tight.")->create();
+
+    $open = Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'Brief'],
+    ]);
+    $settled = Comment::factory()->for($artifact)->resolved()->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'The timeline looks tight.'],
+    ]);
+
+    $response = $this->get(route('project.artifact', [$project, $artifact]))->assertOk();
+
+    $response->assertSee('wire:key="tick-'.$open->id.'"', escape: false);
+    $response->assertSee('wire:key="tick-'.$settled->id.'"', escape: false);
+});
+
+it('gives replies no minimap tick of their own', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    $root = Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'Brief'],
+    ]);
+    $reply = Comment::factory()->replyTo($root)->create();
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertSee('wire:key="tick-'.$root->id.'"', escape: false)
+        ->assertDontSee('wire:key="tick-'.$reply->id.'"', escape: false);
+});
+
+/**
+ * Nothing enters the rail without a place in the document: the composer appears only once a
+ * spot has been picked, which is what keeps the rail free of a permanently parked panel.
+ */
+it('withholds the composer until an anchor has been picked', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertDontSee('rail-item rail-compose', escape: false)
+        ->assertSee('Hover a paragraph and click the pin');
+});
+
+/**
+ * The empty state and the composer occupy the same placement layer, so both on screen at
+ * once means one printed over the other. The prompt has done its job by the time a spot is
+ * picked, so it stands down — on a point-anchored artifact as much as a markdown one.
+ */
+it('drops the empty-state prompt once the composer is open', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->file()->create();
+
+    Livewire::test(ArtifactComments::class, ['artifact' => $artifact])
+        ->assertSee('No feedback yet.')
+        ->set('draftAnchor', ['type' => 'image_region', 'x' => 50, 'y' => 50])
+        ->assertDontSee('No feedback yet.')
+        ->assertSee('Add your details to comment');
+});
+
+/**
+ * A point anchor draws no marker in the stage, so its coordinates are a number with nothing
+ * to refer to. The placement still uses the depth; the reader is never shown it.
+ */
+it('keeps a point anchor’s coordinates out of the rail while still placing by them', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->file()->create();
+
+    Comment::factory()->for($artifact)->create([
+        'body' => 'The crop is too tight here.',
+        'anchor' => ['type' => 'image_region', 'x' => 50, 'y' => 62.5],
+    ]);
+
+    Livewire::test(ArtifactComments::class, ['artifact' => $artifact])
+        ->assertSee('The crop is too tight here.')
+        ->assertDontSee('Pinned at')
+        ->assertSeeHtml('data-anchor-y="62.5"');
 });
