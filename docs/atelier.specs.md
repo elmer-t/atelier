@@ -179,6 +179,7 @@ If confidential HTML is ever required: generate short-lived **signed/expiring if
   - file (stage) → browser-native inline render (image `<img>`, PDF/office `<iframe>`), streamed inline from the app origin, with a per-item download button. If the browser can't render the type, it falls back to downloading.
 - **Downloads section:** separate from the sidebar. Lists `file` artifacts with `placement = download`. These do not "open in the stage" — they download.
 - Keep the sidebar and downloads list visually/functionally separate (do not merge into one list). The split is now driven by `placement`, not by separate entities. A download-only file is never reachable via the stage route.
+- **Stage bar:** a fixed strip above the three columns, divided into the same three columns. Carries the link back to the index, the project and current artifact titles, a toggle for each side panel, focus mode (both panels away at once), and the light/dark/system appearance choice. Panel state is remembered on the device, so it survives navigating between artifacts. Shortcuts: `[` pages, `]` feedback, `F` focus, `Esc` leaves focus.
 
 ### 7.2 Access flow
 - Link → if `private` and no active session: password prompt → on success, session established → project view.

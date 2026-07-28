@@ -331,3 +331,73 @@ select:focus[data-flux-control] {
         top: -2.1rem;
     }
 }
+
+/* -----------------------------------------------------------------------------------------
+   The stage bar. It is the head of the three-column layout rather than a band laid over it:
+   its zones are measured off the sidebar and the rail, so their hairlines continue those
+   columns' own borders down the page, and each panel's toggle stands inside the panel it
+   opens — which is what lets the toggles go unlabelled.
+   ----------------------------------------------------------------------------------------- */
+
+:root {
+    --stage-bar-height: 2.75rem;
+}
+
+.stage-bar {
+    @apply fixed inset-x-0 top-0 z-40 flex items-stretch border-b border-zinc-200 bg-white/90 backdrop-blur print:hidden dark:border-zinc-800 dark:bg-zinc-900/90;
+    height: var(--stage-bar-height);
+}
+
+/* A zone takes its column's width, but is never narrower than the controls standing in it —
+   so a collapsed or hidden panel simply lets its controls pack towards the edge. */
+.stage-bar-zone {
+    @apply flex shrink-0 items-center border-zinc-200 px-4 dark:border-zinc-800;
+    min-width: max-content;
+}
+
+.stage-bar-label {
+    @apply text-[10px] font-semibold uppercase tracking-widest;
+}
+
+.stage-bar-btn {
+    @apply grid h-6 w-7 place-items-center rounded transition-colors;
+    @apply text-zinc-400 dark:text-zinc-500;
+}
+.stage-bar-btn[data-stage-on='yes'] {
+    @apply bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white;
+}
+.stage-bar-btn:hover {
+    @apply bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white;
+}
+
+.stage-icon {
+    @apply h-4 w-4 flex-none;
+}
+.stage-icon-fill {
+    opacity: 0;
+}
+[data-stage-on='yes'] .stage-icon-fill {
+    opacity: 0.22;
+}
+
+/* Hiding a panel is done from up here rather than on the panel: the feedback rail is a
+   Livewire root, and a morph re-evaluates bound attributes against a stale scope. */
+[data-stage-pages='off'] [data-stage-nav] {
+    display: none;
+}
+[data-stage-feedback='off'] .feedback-rail {
+    display: none;
+}
+
+/* The columns give the bar its height back. Below lg they stack and scroll with the page. */
+@media (min-width: 1024px) {
+    .stage-columns > [data-stage-nav],
+    .stage-columns .feedback-rail {
+        top: var(--stage-bar-height);
+        height: calc(100vh - var(--stage-bar-height));
+    }
+
+    .stage-columns > main {
+        height: calc(100vh - var(--stage-bar-height));
+    }
+}
