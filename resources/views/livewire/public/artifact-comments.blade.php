@@ -836,7 +836,6 @@
                         </div>
                         <p class="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
                             {{ __('We use your name and email only to attribute your feedback; your email is never shown to others. We’ll remember you on this device with a cookie so you don’t have to re-enter your details.') }}
-                            <a href="{{ route('privacy') }}" target="_blank" class="underline hover:text-zinc-600 dark:hover:text-zinc-300">{{ __('Privacy Policy') }}</a>.
                         </p>
                     @else
                         <flux:textarea wire:model="draft" rows="3" placeholder="{{ __('Share your feedback…') }}" class="mt-2 text-sm" />

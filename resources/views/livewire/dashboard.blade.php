@@ -3,7 +3,7 @@
     $allClear = $this->feedback === [] && $this->needsContent->isEmpty() && $this->readyToShare->isEmpty();
 @endphp
 
-<div class="mx-auto w-full max-w-3xl px-6 py-8">
+<div class="mx-auto w-full max-w-5xl px-6 py-8">
     <div class="mb-8 flex items-end justify-between">
         <div>
             <flux:heading size="xl">Good to see you</flux:heading>

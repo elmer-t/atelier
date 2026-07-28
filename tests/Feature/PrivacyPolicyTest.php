@@ -13,7 +13,11 @@ it('serves the privacy policy page', function () {
         ->assertSee(config('atelier.privacy.contact_email'));
 });
 
-it('links the privacy policy from the public index and project page', function () {
+/**
+ * The landing page is the single entry point to the policy; the project page and the
+ * feedback rail deliberately no longer carry their own link.
+ */
+it('links the privacy policy from the landing page only', function () {
     $project = Project::factory()->public()->create();
     Artifact::factory()->for($project)->markdown('# Brief')->create();
 
@@ -23,7 +27,7 @@ it('links the privacy policy from the public index and project page', function (
 
     $this->get(route('project.show', $project))
         ->assertOk()
-        ->assertSee(route('privacy'));
+        ->assertDontSee(route('privacy'));
 });
 
 /**
@@ -39,6 +43,6 @@ it('shows a point-of-capture privacy notice at the identity form', function () {
         ->assertSet('identified', false)
         ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'Brief'])
         ->assertSee('Add your details to comment')
-        ->assertSee('Privacy Policy')
-        ->assertSeeHtml(route('privacy'));
+        ->assertSee('your email is never shown to others', escape: false)
+        ->assertDontSeeHtml(route('privacy'));
 });
