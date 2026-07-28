@@ -265,8 +265,7 @@ select:focus[data-flux-control] {
         @apply block;
     }
     /* The strip gets its own lane; nothing else may sit in it. */
-    .rail-shell,
-    .rail-tab {
+    .rail-shell {
         padding-left: 0.875rem;
     }
 
@@ -349,7 +348,7 @@ select:focus[data-flux-control] {
 }
 
 /* A zone takes its column's width, but is never narrower than the controls standing in it —
-   so a collapsed or hidden panel simply lets its controls pack towards the edge. */
+   so a hidden panel simply lets its controls pack towards the edge. */
 .stage-bar-zone {
     @apply flex shrink-0 items-center border-zinc-200 px-4 dark:border-zinc-800;
     min-width: max-content;

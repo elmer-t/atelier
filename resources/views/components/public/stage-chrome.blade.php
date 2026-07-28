@@ -23,10 +23,9 @@
     zone, and so centres over the article rather than over the viewport.
 
     Panels are hidden by CSS keyed off the data attributes published here rather than by
-    `x-show` on the panels themselves: the feedback rail is a Livewire component root,
-    and a morph re-evaluates bound attributes against a stale scope (see the note on
-    setCollapsed() in livewire/public/artifact-comments.blade.php), so nothing outside
-    the rail may bind to its class list.
+    `x-show` on the panels themselves: the feedback rail is a Livewire component root, and
+    a morph re-evaluates bound attributes against a stale scope — it would come back merged
+    with the server's own class list — so nothing may bind to the rail's class list.
 --}}
 <div
     x-data="{
@@ -124,7 +123,9 @@
     }"
     x-bind:data-stage-pages="pages ? 'on' : 'off'"
     x-bind:data-stage-feedback="feedback ? 'on' : 'off'"
-    x-on:keydown.window="onKey($event)">
+    x-on:keydown.window="onKey($event)"
+    {{-- Clicking a highlight in the article opens its Thread, which needs the rail up. --}}
+    x-on:stage-feedback-open.window="feedback = true">
 
     <header
         x-data="{
@@ -136,9 +137,9 @@
             fitRight: false,
 
             /**
-             * The rail sets its own width and can be collapsed to a tab from inside
-             * itself, so the columns are measured rather than assumed. Below lg they
-             * stack, and the zones give up their widths and pack to their contents.
+             * The sidebar and the rail set their own widths, so the columns are measured
+             * rather than assumed. Below lg they stack, and the zones give up their
+             * widths and pack to their contents.
              */
             measure() {
                 const wide = window.innerWidth >= 1024;
@@ -156,10 +157,10 @@
             },
 
             /**
-             * A zone is floored at the width of its own controls, so a rail collapsed to
-             * its tab leaves the zone standing wider than the column it is in. Its seam
-             * hairline would then be drawn well off the border it is meant to continue —
-             * so the line is only claimed when the two widths actually agree.
+             * A zone is floored at the width of its own controls, so a hidden panel
+             * leaves the zone standing wider than the column it is in. Its seam hairline
+             * would then be drawn well off the border it is meant to continue — so the
+             * line is only claimed when the two widths actually agree.
              */
             fits(el, column) {
                 return column > 0 && !! el && Math.abs(el.getBoundingClientRect().width - column) < 1;
@@ -170,8 +171,6 @@
             $nextTick(() => measure());
             window.addEventListener('resize', () => measure());
         "
-        {{-- The rail animates its own width over 200ms, and does it without telling anyone. --}}
-        x-on:click.window="setTimeout(() => measure(), 260)"
         class="stage-bar">
 
         {{-- The pages column. --}}

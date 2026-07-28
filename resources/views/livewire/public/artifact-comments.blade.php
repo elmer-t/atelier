@@ -21,22 +21,21 @@
 
     What alignment cannot say is anything about the feedback you are not currently level
     with. The minimap fills that gap: a strip down the rail's leading edge with one tick per
-    anchor at its depth in the document, so the distribution of feedback is legible at a
-    glance and stays legible when the rail is collapsed.
+    anchor at its depth in the document, so the distribution of feedback down the whole
+    article is legible at a glance.
 
     Anchors store quoted text rather than offsets (ADR-0004), so highlights are recovered by
     searching the stage for the quote on every redraw. The stage lives outside this component,
     so that pass is driven from here on load and on `threads-updated` rather than by the morph.
+
+    Whether the rail is showing at all belongs to the stage bar, which hides it with CSS keyed
+    off its own state (see components/public/stage-chrome.blade.php). The rail therefore has no
+    collapse control of its own: it asks to be shown by dispatching `stage-feedback-open`.
 --}}
 
 <aside
-    @class([
-        'feedback-rail relative w-full shrink-0 border-t border-zinc-200 bg-white transition-[width] duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900',
-        'lg:w-14' => $collapsed,
-        'lg:w-96' => ! $collapsed,
-    ])
+    class="feedback-rail relative w-full shrink-0 border-t border-zinc-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-96 lg:overflow-hidden lg:border-t-0 lg:border-l dark:border-zinc-800 dark:bg-zinc-900"
     x-data="{
-        collapsed: @js($collapsed),
         gutter: @js($artifact->isMarkdown()),
         anchorType: @js($anchorType),
 
@@ -128,21 +127,19 @@
         },
 
         /**
-         * The rail's own width is the one thing Alpine cannot hold with `x-bind:class`.
-         * Livewire clones the incoming HTML against a stale scope before morphing it in,
-         * so a bound class on the component root is re-evaluated with the previous value
-         * of `collapsed` and merged into the server's class list — leaving both widths on
-         * the element, where the wider one wins. So the server owns the width class and
-         * the swap is written here by hand, to spare the rail a round trip before it moves.
+         * Whether the rail is on screen at all. The stage bar hides it outright, so a
+         * placement pass fired while it is hidden would measure every box at zero and
+         * write placements against nothing.
          */
-        setCollapsed(value) {
-            this.collapsed = value;
+        visible() {
+            return !! this.root()?.getClientRects().length;
+        },
 
-            this.root()?.classList.toggle('lg:w-14', value);
-            this.root()?.classList.toggle('lg:w-96', ! value);
-
-            $wire.setCollapsed(value);
-            this.$nextTick(() => this.layout());
+        /** Ask the stage bar to bring the rail back, for a jump that arrived from the stage. */
+        reveal() {
+            if (! this.visible()) {
+                window.dispatchEvent(new CustomEvent('stage-feedback-open'));
+            }
         },
 
         /* ------------------------------------------------------------------- placement */
@@ -198,7 +195,7 @@
 
             // Under lg the rail sits beneath the article: no alignment, so a plain stack, and
             // nothing is hanging off an edge that needs room made for it.
-            if (this.collapsed || window.innerWidth < 1024) {
+            if (! this.visible() || window.innerWidth < 1024) {
                 items.forEach((el) => { el.style.transform = ''; });
                 this.above = this.below = 0;
                 this.setRunway(0);
@@ -326,7 +323,7 @@
             const item = id !== null ? this.item(id) : null;
             const mark = id !== null ? this.highlight(id) : null;
 
-            if (! item || ! mark || this.collapsed || window.innerWidth < 1024) {
+            if (! item || ! mark || ! this.visible() || window.innerWidth < 1024) {
                 svg.replaceChildren();
 
                 return;
@@ -443,9 +440,7 @@
 
         /** Content → feedback: open the Thread and bring it to the eye. */
         focusThread(id) {
-            if (this.collapsed) {
-                this.setCollapsed(false);
-            }
+            this.reveal();
 
             this.activeId = Number(id);
 
@@ -462,10 +457,6 @@
 
         /** Feedback → content: bring the anchored text to the eye. */
         focusAnchor(id) {
-            if (this.collapsed) {
-                this.setCollapsed(false);
-            }
-
             const target = this.highlight(id);
 
             if (target) {
@@ -726,43 +717,14 @@
         <input type="text" id="atelier-website" wire:model="website" tabindex="-1" autocomplete="off" />
     </div>
 
-    {{-- Collapsed: slim vertical tab to reopen (desktop). The minimap stays lit beside it. --}}
-    <button type="button" x-show="collapsed" x-on:click="setCollapsed(false)" title="{{ __('Show feedback') }}"
-        @unless ($collapsed) style="display: none" @endunless
-        class="rail-tab hidden h-full w-full flex-col items-center gap-3 pt-5 text-zinc-500 transition hover:text-zinc-900 lg:flex dark:text-zinc-400 dark:hover:text-white">
-        <span class="text-lg leading-none">«</span>
-        <span class="text-xs font-semibold uppercase tracking-widest" style="writing-mode: vertical-rl">{{ __('Feedback') }}</span>
-        <span class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">{{ $this->threads->count() }}</span>
-    </button>
-
-    {{-- Collapsed: header bar to reopen (mobile) --}}
-    <button type="button" x-show="collapsed" x-on:click="setCollapsed(false)"
-        @unless ($collapsed) style="display: none" @endunless
-        class="flex w-full items-center justify-between p-5 text-left lg:hidden">
-        <span class="flex items-center gap-2">
-            <flux:heading size="sm">{{ __('Feedback') }}</flux:heading>
-            <span class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">{{ $this->threads->count() }}</span>
-        </span>
-        <span class="text-base text-zinc-400">⌄</span>
-    </button>
-
-    <div x-show="! collapsed" @if ($collapsed) style="display: none" @endif class="rail-shell flex flex-col lg:h-full">
+    <div class="rail-shell flex flex-col lg:h-full">
 
         {{-- The only horizontal rule in the rail: below it nothing sits anywhere but level
              with its own text. --}}
         <div class="shrink-0 border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
             <div class="flex items-baseline justify-between gap-2">
                 <span class="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">{{ __('Feedback') }}</span>
-                <div class="flex items-baseline gap-3">
-                    <span class="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">{{ $this->threads->count() }}</span>
-                    <button type="button" x-on:click.stop="setCollapsed(true)" title="{{ __('Collapse feedback') }}" aria-label="{{ __('Collapse feedback') }}"
-                        class="text-zinc-400 transition hover:text-zinc-800 dark:hover:text-zinc-100">
-                        {{-- Sized to match the chevrons that reopen the rail, so the pair
-                             reads as one control rather than two. --}}
-                        <span class="hidden text-lg leading-none lg:inline">»</span>
-                        <span class="text-base leading-none lg:hidden">⌃</span>
-                    </button>
-                </div>
+                <span class="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">{{ $this->threads->count() }}</span>
             </div>
 
             @unless (filled($draftAnchor))

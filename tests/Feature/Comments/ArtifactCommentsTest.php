@@ -8,7 +8,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -244,51 +243,28 @@ it('orders threads newest-first while keeping replies chronological', function (
         ->and($threads->last()->replies->pluck('id')->all())->toBe([$firstReply->id, $secondReply->id]);
 });
 
-it('reads the collapsed rail preference from the visitor cookie', function () {
-    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
-        ->assertSet('collapsed', false);
-
-    Livewire::withCookies(['atelier_feedback_collapsed' => '1'])
-        ->test(ArtifactComments::class, ['artifact' => $this->artifact])
-        ->assertSet('collapsed', true);
-});
-
-it('persists the collapse preference to a long-lived cookie', function () {
-    Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])
-        ->call('setCollapsed', true)
-        ->assertSet('collapsed', true);
-
-    $cookie = collect(Cookie::getQueuedCookies())
-        ->first(fn ($c) => $c->getName() === 'atelier_feedback_collapsed');
-
-    expect($cookie)->not->toBeNull()
-        ->and($cookie->getValue())->toBe('1');
-});
-
 /**
- * Livewire re-evaluates the incoming HTML against a stale Alpine scope before morphing
- * it in, so a bound class on the component root comes back merged with the server's own
- * class list — after a couple of toggles the rail carried both widths and the wider one
- * won. The width class is the server's alone; nothing may bind it on the root.
+ * Showing and hiding the rail belongs to the stage bar alone: the rail used to be able to
+ * collapse itself as well, which left two controls for one thing and two sources of truth
+ * for its width. Livewire also re-evaluates incoming HTML against a stale Alpine scope
+ * before morphing it in, so a bound class on the component root came back merged with the
+ * server's own — the rail carried both widths and the wider one won. It now renders at one
+ * fixed width, bound by nothing.
  */
-it('renders exactly one rail width, and never binds it from the root', function () {
-    $railClasses = function (string $html): array {
-        preg_match('/class="(feedback-rail[^"]*)"/', $html, $match);
+it('renders the rail at one fixed width with no collapse control of its own', function () {
+    $html = Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact])->html();
 
-        return array_values(array_filter(
-            preg_split('/\s+/', $match[1] ?? ''),
-            fn (string $class) => str_starts_with($class, 'lg:w-'),
-        ));
-    };
+    preg_match('/class="(feedback-rail[^"]*)"/', $html, $match);
 
-    $component = Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact]);
+    $widths = array_values(array_filter(
+        preg_split('/\s+/', $match[1] ?? ''),
+        fn (string $class) => str_starts_with($class, 'lg:w-'),
+    ));
 
-    expect($railClasses($component->html()))->toBe(['lg:w-96'])
-        ->and($component->html())->not->toMatch('/x-bind:class="[^"]*collapsed/');
-
-    $component->call('setCollapsed', true);
-
-    expect($railClasses($component->html()))->toBe(['lg:w-14']);
+    expect($widths)->toBe(['lg:w-96'])
+        ->and($html)->not->toContain('collapsed')
+        ->and($html)->not->toContain('setCollapsed')
+        ->and($html)->not->toContain('rail-tab');
 });
 
 it('refuses a deactivated email and does not resurrect it as a new user', function () {

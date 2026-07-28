@@ -101,8 +101,8 @@ it('exposes a point anchor’s depth so it can be placed without a quote', funct
 });
 
 /**
- * The minimap: one tick per Thread, so the distribution of feedback down the document is
- * readable at a glance and stays readable when the rail is collapsed.
+ * The minimap: one tick per Thread, so the distribution of feedback down the whole
+ * document is readable at a glance, however far the rail is scrolled.
  */
 it('gives every Thread a minimap tick carrying its identity and settled state', function () {
     $project = Project::factory()->public()->create();
