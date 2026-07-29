@@ -52,15 +52,22 @@ it('leaves the naming to the bar and starts the pages panel on its list', functi
         ->and($sidebar)->not->toContain('Pages');
 });
 
-it('offers all three appearances', function () {
+/**
+ * All three appearances stay reachable, but from one cycling button rather than a
+ * segmented row — the theme is the least of what a visitor followed the link to do.
+ */
+it('reaches all three appearances from a single cycling control', function () {
     $project = Project::factory()->public()->create();
     Artifact::factory()->for($project)->markdown('# Brief')->create();
 
-    $response = $this->get(route('project.show', $project))->assertOk();
+    $html = $this->get(route('project.show', $project))->assertOk()->getContent();
 
-    foreach (['System', 'Light', 'Dark'] as $appearance) {
-        $response->assertSee('aria-label="'.$appearance.'"', escape: false);
+    foreach (['Follow the system appearance', 'Switch to light', 'Switch to dark'] as $title) {
+        expect($html)->toContain($title);
     }
+
+    expect($html)->toContain('aria-label="'.__('Change appearance').'"')
+        ->and(substr_count($html, 'x-on:click="cycleAppearance()"'))->toBe(1);
 });
 
 it('does not double the way back now that the bar carries it', function () {

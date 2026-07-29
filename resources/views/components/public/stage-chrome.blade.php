@@ -4,11 +4,14 @@
     /** Where the panel choice is remembered, so it survives the next artifact's page load. */
     $panelsKey = 'atelier.stage.panels';
 
+    /** The appearance cycle: each state's glyph, and what a click landing on it does. */
     $appearances = [
-        'system' => ['monitor', __('System')],
-        'light' => ['sun', __('Light')],
-        'dark' => ['moon', __('Dark')],
+        'system' => ['monitor', __('Follow the system appearance')],
+        'light' => ['sun', __('Switch to light')],
+        'dark' => ['moon', __('Switch to dark')],
     ];
+
+    $appearanceTitles = array_map(fn (array $appearance): string => $appearance[1], $appearances);
 @endphp
 
 {{--
@@ -35,8 +38,11 @@
         /** What was showing before focus mode, so leaving it puts things back. */
         restore: null,
 
-        /** Mirrors Flux's appearance so the segmented control can track it. */
+        /** Mirrors Flux's appearance so the button can show which one is in force. */
         appearance: window.localStorage.getItem('flux.appearance') || 'system',
+
+        /** Keyed by appearance, in the order the button cycles through them. */
+        appearanceTitles: @js($appearanceTitles),
 
         init() {
             const saved = window.localStorage.getItem(@js($panelsKey));
@@ -103,6 +109,22 @@
             } else {
                 window.Flux?.applyAppearance?.(value);
             }
+        },
+
+        /**
+         * All three appearances are reached from one button, which cycles: the glyph is
+         * the state in force, and the title names where the next click lands. A segmented
+         * control was the widest thing in this zone and the only bordered box on the bar —
+         * a lot of weight for the least of what a visitor followed the link to do.
+         */
+        get nextAppearance() {
+            const order = Object.keys(this.appearanceTitles);
+
+            return order[(order.indexOf(this.appearance) + 1) % order.length];
+        },
+
+        cycleAppearance() {
+            this.setAppearance(this.nextAppearance);
         },
 
         /**
@@ -229,17 +251,22 @@
                     <span x-show="focused" style="display: none"><x-public.stage-icon name="collapse" /></span>
                 </button>
 
-                <div class="flex items-center gap-0.5 rounded-md border border-zinc-200 p-0.5 dark:border-zinc-700">
-                    @foreach ($appearances as $value => [$glyph, $label])
-                        <button type="button" class="stage-bar-btn"
-                            x-bind:data-stage-on="appearance === @js($value) ? 'yes' : 'no'"
-                            x-on:click="setAppearance(@js($value))"
-                            title="{{ $label }}"
-                            aria-label="{{ $label }}">
+                {{--
+                    No `data-stage-on` here, unlike the toggles beside it: that highlight
+                    reads as "this panel is open", and an appearance is a mode rather than
+                    something switched on — so this control sits a step quieter than its
+                    neighbours whichever appearance is in force.
+                --}}
+                <button type="button" class="stage-bar-btn"
+                    x-on:click="cycleAppearance()"
+                    x-bind:title="appearanceTitles[nextAppearance]"
+                    aria-label="{{ __('Change appearance') }}">
+                    @foreach ($appearances as $value => [$glyph, $title])
+                        <span x-show="appearance === @js($value)" @if (! $loop->first) style="display: none" @endif>
                             <x-public.stage-icon :name="$glyph" />
-                        </button>
+                        </span>
                     @endforeach
-                </div>
+                </button>
             </div>
         </div>
     </header>
