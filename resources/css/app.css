@@ -379,12 +379,96 @@ select:focus[data-flux-control] {
     opacity: 0.22;
 }
 
+/* The detail toggle's glyph is the list it governs: the sub-lines appear on the icon
+   exactly as they appear in the panel. Full strength rather than the 0.22 the panel
+   fills use — here they are the state, not a hint of it. */
+.stage-icon-detail {
+    opacity: 0;
+}
+[data-stage-on='yes'] .stage-icon-detail {
+    opacity: 1;
+}
+
 /* Hiding a panel is done from up here rather than on the panel: the feedback rail is a
    Livewire root, and a morph re-evaluates bound attributes against a stale scope. */
 [data-stage-pages='off'] [data-stage-nav] {
     display: none;
 }
 [data-stage-feedback='off'] .feedback-rail {
+    display: none;
+}
+
+/* -----------------------------------------------------------------------------------------
+   The pages panel: one page per row, and what that page's feedback wants from this viewer.
+
+   Everything below hangs off `data-attention` on the row, so the mark, the title's weight
+   and a resolved page's retreat are one decision rather than three that can disagree. The
+   ladder descends in weight — filled, then ringed, then a quieter ring, then nothing — and
+   only the top rung, the feedback genuinely new to this viewer, is a filled shape.
+   ----------------------------------------------------------------------------------------- */
+
+.stage-page {
+    @apply text-zinc-600 dark:text-zinc-300;
+}
+.stage-page-active {
+    @apply text-white dark:text-zinc-900;
+}
+.stage-page-glyph {
+    @apply text-zinc-400 dark:text-zinc-500;
+}
+.stage-page-active .stage-page-glyph {
+    @apply text-white/60 dark:text-zinc-900/60;
+}
+
+/* Read and answered: the row steps back rather than announcing itself as done. */
+.stage-page[data-attention='resolved']:not(.stage-page-active),
+.stage-page[data-attention='resolved']:not(.stage-page-active) .stage-page-glyph {
+    @apply text-zinc-400 dark:text-zinc-500;
+}
+.stage-page[data-attention='unread'] .stage-page-title {
+    @apply font-medium;
+}
+
+.stage-attention {
+    @apply ml-auto hidden size-1.5 flex-none rounded-full border border-transparent;
+}
+[data-attention='unread'] .stage-attention,
+[data-attention='awaiting'] .stage-attention,
+[data-attention='open'] .stage-attention {
+    @apply block;
+}
+[data-attention='unread'] .stage-attention {
+    @apply bg-amber-500;
+}
+[data-attention='awaiting'] .stage-attention {
+    @apply border-amber-500;
+}
+[data-attention='open'] .stage-attention {
+    @apply border-zinc-400 dark:border-zinc-500;
+}
+.stage-page-active[data-attention='open'] .stage-attention {
+    @apply border-white/50 dark:border-zinc-900/50;
+}
+
+/* The opened-out line, hidden by the stage bar the same way the panels themselves are. */
+.stage-page-detail {
+    @apply mt-0.5 block pl-[1.375rem] text-xs text-zinc-400 dark:text-zinc-500;
+}
+[data-attention='unread'] .stage-page-detail,
+[data-attention='awaiting'] .stage-page-detail {
+    @apply text-amber-600 dark:text-amber-400;
+}
+[data-attention='none'] .stage-page-detail {
+    @apply text-zinc-300 dark:text-zinc-600;
+}
+.stage-page-active .stage-page-detail {
+    @apply text-white/50 dark:text-zinc-900/50;
+}
+.stage-page-active[data-attention='unread'] .stage-page-detail,
+.stage-page-active[data-attention='awaiting'] .stage-page-detail {
+    @apply text-amber-300 dark:text-amber-600;
+}
+[data-stage-details='off'] [data-stage-detail] {
     display: none;
 }
 

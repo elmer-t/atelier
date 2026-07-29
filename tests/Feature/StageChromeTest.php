@@ -43,7 +43,8 @@ it('leaves the naming to the bar and starts the pages panel on its list', functi
 
     $html = $this->get(route('project.show', $project))->assertOk()->getContent();
 
-    preg_match('/<aside data-stage-nav.*?<\/aside>/s', $html, $match);
+    // The panel is a Livewire root, so its own attributes are no longer first in the tag.
+    preg_match('/<aside[^>]*data-stage-nav.*?<\/aside>/s', $html, $match);
     $sidebar = $match[0] ?? '';
 
     expect($sidebar)->toContain('Concept Brief')

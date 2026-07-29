@@ -25,6 +25,11 @@
             <path d="M9.75 3v10" />
             @break
 
+        @case('rows')
+            <path d="M2.75 3.75h10.5M2.75 9.75h10.5" />
+            <path class="stage-icon-detail" d="M2.75 6.25h5.5M2.75 12.25h5.5" />
+            @break
+
         @case('expand')
             <path d="M6.25 2H2v4.25M9.75 2H14v4.25M6.25 14H2V9.75M9.75 14H14V9.75" />
             @break

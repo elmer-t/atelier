@@ -135,6 +135,22 @@ and only the human Creator sets it — an Agent (a non-human User) may reply to 
 never Resolve it, so a human eye always gates the loop.
 _Avoid_: closed, done, archived
 
+**Read**:
+The fact that a User has seen a Thread as it stood at a moment. Recorded when they open
+the Thread — the only act that puts its Replies on screen — and kept as the newest Comment
+they had seen, so a later Reply makes the Thread unread again without anything being reset.
+Recognition is device-bound (ADR-0003), so a Read describes an identity on a device and is
+never evidence that a person saw something.
+_Avoid_: seen, receipt, acknowledgement
+
+**Attention**:
+What an Artifact's feedback asks of one viewer, as the pages panel draws it: feedback new
+to them, feedback they have read but not answered, feedback that is not theirs, an Artifact
+whose Threads are all Resolved, or nothing. A Thread is theirs to answer when it is
+unresolved and someone else spoke last — for a Client only in Threads they are in, for the
+Creator in all of them. The Client-facing counterpart of the Feedback digest.
+_Avoid_: unread count, badge, notification
+
 **Feedback digest**:
 The synthesized, per-project view an Agent pulls to learn where it must act: the project's
 unresolved Threads, plus the artifacts a human has edited since the Agent's own last Revision on

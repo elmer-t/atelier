@@ -1,56 +1,9 @@
 <x-public.layout :title="$project->title">
-    @php
-        $stageArtifacts = $project->artifacts->filter->showsInStage();
-        $downloads = $project->artifacts->filter->isDownload();
-    @endphp
-
     <x-public.stage-chrome :project="$project" :current="$current">
         <div class="stage-columns flex min-h-screen flex-col pt-[var(--stage-bar-height)] lg:flex-row">
-            {{-- Sidebar. The app name, the project and this panel's own name are all named
-                 in the stage bar directly above it, so the list starts at the top. --}}
-            <aside data-stage-nav class="w-full shrink-0 border-b border-zinc-200 bg-white lg:sticky lg:top-0 lg:h-screen lg:w-72 lg:overflow-y-auto lg:border-b-0 lg:border-r dark:border-zinc-800 dark:bg-zinc-900">
-                @if ($stageArtifacts->isNotEmpty())
-                    <nav class="px-3 py-4">
-                        <ul class="space-y-0.5">
-                            @foreach ($stageArtifacts as $artifact)
-                                @php($active = $current && $artifact->is($current))
-                                <li>
-                                    <a href="{{ route('project.artifact', [$project, $artifact]) }}"
-                                       @class([
-                                           'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition',
-                                           'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' => $active,
-                                           'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800' => ! $active,
-                                       ])>
-                                        <span @class([
-                                            'text-xs',
-                                            'opacity-60' => $active,
-                                            'text-zinc-400 dark:text-zinc-500' => ! $active,
-                                        ])>{{ $artifact->isHtml() ? '◆' : ($artifact->isFile() ? '▣' : '▤') }}</span>
-                                        <span class="truncate">{{ $artifact->title }}</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </nav>
-                @endif
-
-                @if ($downloads->isNotEmpty())
-                    <div class="border-t border-zinc-200 px-3 py-4 dark:border-zinc-800">
-                        <p class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Downloads</p>
-                        <ul class="space-y-0.5">
-                            @foreach ($downloads as $artifact)
-                                <li>
-                                    <a href="{{ route('project.artifact.download', [$project, $artifact]) }}"
-                                       class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                                        <span class="truncate">{{ $artifact->original_filename ?? $artifact->title }}</span>
-                                        <span class="shrink-0 text-xs text-zinc-400 dark:text-zinc-500">↓</span>
-                                    </a>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-            </aside>
+            {{-- Pages panel: the ordered stage artifacts, the downloads, and what each
+                 page's feedback still wants from this viewer. --}}
+            <livewire:public.project-pages :project="$project" :current="$current" />
 
             {{-- Main stage --}}
             <main class="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">

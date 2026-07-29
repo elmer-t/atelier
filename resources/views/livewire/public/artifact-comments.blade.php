@@ -438,11 +438,21 @@
 
         /* ----------------------------------------------------------------- interaction */
 
+        /**
+         * Opening a Thread is what registers it as read: its Replies are `display:none`
+         * until then, so this is the only act that puts them on screen. Renderless on
+         * the server, so it never costs the rail a morph mid-interaction.
+         */
+        markSeen(id) {
+            $wire.markThreadSeen(Number(id));
+        },
+
         /** Content → feedback: open the Thread and bring it to the eye. */
         focusThread(id) {
             this.reveal();
 
             this.activeId = Number(id);
+            this.markSeen(id);
 
             this.$nextTick(() => {
                 this.layout();
@@ -473,6 +483,10 @@
 
         toggle(id) {
             this.activeId = this.activeId === id ? null : id;
+
+            if (this.activeId === id) {
+                this.markSeen(id);
+            }
 
             this.$nextTick(() => {
                 this.layout();

@@ -3,18 +3,20 @@
 namespace App\Livewire\Public;
 
 use App\Enums\UserRole;
+use App\Livewire\Concerns\ResolvesCommenter;
 use App\Models\Artifact;
 use App\Models\Comment;
+use App\Models\CommentRead;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -32,6 +34,8 @@ use Livewire\Component;
  */
 class ArtifactComments extends Component
 {
+    use ResolvesCommenter;
+
     public Artifact $artifact;
 
     /** Whether the current visitor has an established commenting identity. */
@@ -64,9 +68,6 @@ class ArtifactComments extends Component
      */
     public string $website = '';
 
-    /** The session key remembering the active commenter across this browsing session. */
-    private const SESSION_KEY = 'atelier.commenter';
-
     /** When this visitor first opened the feedback rail — the baseline for the submit-timing floor. */
     private const OPENED_AT_KEY = 'atelier.comment_form_opened_at';
 
@@ -76,9 +77,6 @@ class ArtifactComments extends Component
     private const POST_IP_LIMIT_KEY = 'comment-post-ip:';
 
     private const POST_USER_LIMIT_KEY = 'comment-post-user:';
-
-    /** The long-lived cookie that re-attributes a returning visitor (ADR-0003). */
-    private const COOKIE_NAME = 'atelier_commenter';
 
     public function mount(): void
     {
@@ -240,6 +238,33 @@ class ArtifactComments extends Component
         $this->refreshThreads();
     }
 
+    /**
+     * Record that the viewer has read this Thread, which the rail calls the moment it
+     * is opened. Opening is what counts: a Thread's Replies are not rendered until then
+     * (see `.rail-open-only`), so it is the only act that puts them on screen.
+     *
+     * Renderless — the rail already reflects the click on its own, and this must not
+     * cost it a morph. It announces the write instead, so the pages panel can re-draw
+     * its status marks; a re-open with nothing new writes nothing and says nothing.
+     *
+     * Unlike posting, this is not rate limited: it mints a row only when a Comment has
+     * genuinely landed since the last one, so repetition cannot inflate the table.
+     */
+    #[Renderless]
+    public function markThreadSeen(int $rootId): void
+    {
+        $reader = $this->currentCommenter();
+        $thread = $this->artifact->comments()->roots()->find($rootId);
+
+        if ($reader === null || $thread === null) {
+            return;
+        }
+
+        if (CommentRead::record($reader, $thread) !== null) {
+            $this->dispatch('thread-seen');
+        }
+    }
+
     public function startReply(int $rootId): void
     {
         $this->replyingToId = $rootId;
@@ -394,40 +419,6 @@ class ArtifactComments extends Component
         $this->dispatch('threads-updated');
     }
 
-    /**
-     * The acting commenter, re-resolved server-side on every action: a logged-in
-     * User, else the session/cookie-remembered passwordless Client, else null.
-     *
-     * A deactivated User is nobody here — otherwise the session or the year-long
-     * return-visit cookie would keep letting them post after being cut off (#30).
-     */
-    private function currentCommenter(): ?User
-    {
-        $user = Auth::user();
-
-        if ($user instanceof User) {
-            return $user->isDeactivated() ? null : $user;
-        }
-
-        $id = session(self::SESSION_KEY) ?? request()->cookie(self::COOKIE_NAME);
-
-        if ($id === null) {
-            return null;
-        }
-
-        $remembered = User::query()->whereKey((string) $id)->first();
-
-        if ($remembered === null || $remembered->isDeactivated()) {
-            return null;
-        }
-
-        if (session(self::SESSION_KEY) === null) {
-            session([self::SESSION_KEY => $remembered->id]);
-        }
-
-        return $remembered;
-    }
-
     private function requireCommenter(): ?User
     {
         $commenter = $this->currentCommenter();
@@ -438,12 +429,6 @@ class ArtifactComments extends Component
         }
 
         return $commenter;
-    }
-
-    private function rememberCommenter(User $user): void
-    {
-        session([self::SESSION_KEY => $user->id]);
-        Cookie::queue(self::COOKIE_NAME, (string) $user->id, 60 * 24 * 365);
     }
 
     private function notifyCreators(Comment $comment): void

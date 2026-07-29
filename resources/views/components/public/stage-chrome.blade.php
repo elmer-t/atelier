@@ -35,6 +35,9 @@
         pages: true,
         feedback: true,
 
+        /** Whether the pages panel spells each page's feedback status out in words. */
+        details: false,
+
         /** What was showing before focus mode, so leaving it puts things back. */
         restore: null,
 
@@ -52,10 +55,12 @@
 
                 this.pages = state.pages ?? true;
                 this.feedback = state.feedback ?? true;
+                this.details = state.details ?? false;
             }
 
             this.$watch('pages', () => this.settle());
             this.$watch('feedback', () => this.settle());
+            this.$watch('details', () => this.settle());
 
             this.appearance = this.$flux?.appearance ?? this.appearance;
         },
@@ -77,7 +82,7 @@
         settle() {
             window.localStorage.setItem(
                 @js($panelsKey),
-                JSON.stringify({ pages: this.pages, feedback: this.feedback })
+                JSON.stringify({ pages: this.pages, feedback: this.feedback, details: this.details })
             );
 
             requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
@@ -139,12 +144,17 @@
 
             if (event.key === '[') { this.pages = ! this.pages; }
             else if (event.key === ']') { this.feedback = ! this.feedback; }
+            else if (event.key === 'd') { this.details = ! this.details; }
             else if (event.key === 'f') { this.toggleFocus(); }
             else if (event.key === 'Escape' && this.focused) { this.toggleFocus(); }
         },
     }"
     x-bind:data-stage-pages="pages ? 'on' : 'off'"
     x-bind:data-stage-feedback="feedback ? 'on' : 'off'"
+    {{-- Static as well as bound, so the detail lines are not drawn for the frame
+         before Alpine hydrates and folds them away again. --}}
+    data-stage-details="off"
+    x-bind:data-stage-details="details ? 'on' : 'off'"
     x-on:keydown.window="onKey($event)"
     {{-- Clicking a highlight in the article opens its Thread, which needs the rail up. --}}
     x-on:stage-feedback-open.window="feedback = true">
@@ -207,13 +217,29 @@
                 <span class="stage-bar-label">{{ config('app.name', 'Atelier') }}</span>
             </a>
 
-            <button type="button" class="stage-bar-btn ml-auto"
-                x-bind:data-stage-on="pages ? 'yes' : 'no'"
-                x-on:click="pages = ! pages"
-                x-bind:title="(pages ? @js(__('Hide pages')) : @js(__('Show pages'))) + '  ['"
-                aria-label="{{ __('Toggle pages panel') }}">
-                <x-public.stage-icon name="panel-left" />
-            </button>
+            <div class="ml-auto flex items-center gap-1">
+                {{--
+                    Opens the pages panel out: every page keeps its status mark and gains a
+                    line naming that status in words. Stands down while the panel it governs
+                    is itself hidden, rather than sitting there governing nothing.
+                --}}
+                <button type="button" class="stage-bar-btn"
+                    x-show="pages"
+                    x-bind:data-stage-on="details ? 'yes' : 'no'"
+                    x-on:click="details = ! details"
+                    x-bind:title="(details ? @js(__('Hide page status')) : @js(__('Show page status'))) + '  D'"
+                    aria-label="{{ __('Toggle page status detail') }}">
+                    <x-public.stage-icon name="rows" />
+                </button>
+
+                <button type="button" class="stage-bar-btn"
+                    x-bind:data-stage-on="pages ? 'yes' : 'no'"
+                    x-on:click="pages = ! pages"
+                    x-bind:title="(pages ? @js(__('Hide pages')) : @js(__('Show pages'))) + '  ['"
+                    aria-label="{{ __('Toggle pages panel') }}">
+                    <x-public.stage-icon name="panel-left" />
+                </button>
+            </div>
         </div>
 
         {{-- The stage column: the title centres over the article, not over the screen. --}}
