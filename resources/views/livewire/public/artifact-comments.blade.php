@@ -744,7 +744,7 @@
             @unless (filled($draftAnchor))
                 @if ($artifact->isMarkdown())
                     <p class="mt-1 text-xs leading-snug text-zinc-400 dark:text-zinc-500">
-                        💬 {{ __('Hover a paragraph and click the pin — your comment opens level with it.') }}
+                        💬 {{ __('Hover a paragraph and click the pin to add a comment.') }}
                     </p>
                 @else
                     {{-- No prose to quote, so the anchor is a point on the artifact rather than
