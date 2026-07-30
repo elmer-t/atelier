@@ -62,7 +62,7 @@ class PrototypeShowcaseSeeder extends Seeder
             ?? User::factory()->create(['role' => UserRole::Creator]);
 
         foreach ($this->public as $i => $spec) {
-            $project = Project::factory()->public()->create([
+            $project = Project::factory()->public()->for($author, 'owner')->create([
                 'title' => $spec['title'],
                 'view_count' => $spec['views'],
                 'created_at' => now()->subDays($spec['ageDays']),
@@ -79,8 +79,8 @@ class PrototypeShowcaseSeeder extends Seeder
         }
 
         // A private and an archived project — these must NOT appear on the index.
-        Project::factory()->private()->create(['title' => 'Confidential — Client Retainer']);
-        Project::factory()->public()->archived()->create(['title' => 'Old Portfolio (archived)']);
+        Project::factory()->private()->for($author, 'owner')->create(['title' => 'Confidential — Client Retainer']);
+        Project::factory()->public()->archived()->for($author, 'owner')->create(['title' => 'Old Portfolio (archived)']);
     }
 
     private function seedArtifacts(Project $project, User $author, int $markdown, int $html, int $files): void

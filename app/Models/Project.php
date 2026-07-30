@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Hash;
 
 /**
  * @property int $id
+ * @property int|null $user_id
  * @property string $title
  * @property string $slug
  * @property string $sandbox_token
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\Hash;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Artifact|null $headerArtifact
+ * @property-read User|null $owner
  */
 #[Fillable(['title'])]
 class Project extends Model
@@ -59,6 +61,18 @@ class Project extends Model
             $project->sandbox_token ??= self::generateToken(config('atelier.sandbox_token_bytes'));
             $project->session_version ??= 1;
         });
+    }
+
+    /**
+     * The Creator this project belongs to — the one who gets told when feedback
+     * lands on it. Null for projects that predate ownership or whose owner was
+     * deleted; callers must handle an unowned project rather than assume one.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

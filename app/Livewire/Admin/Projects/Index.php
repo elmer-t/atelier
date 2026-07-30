@@ -11,6 +11,7 @@ use Flux\Flux;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -116,7 +117,9 @@ class Index extends Component
     {
         $validated = $this->validate();
 
-        $project = Project::create(['title' => $validated['newTitle']]);
+        // Owned by whoever made it, so feedback on it routes back to them rather
+        // than to every Creator on the instance.
+        $project = Auth::user()->projects()->create(['title' => $validated['newTitle']]);
 
         $this->reset('newTitle');
         unset($this->projects);

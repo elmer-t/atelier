@@ -63,6 +63,17 @@ class User extends Authenticatable implements PasskeyUser
         return $this->hasMany(Comment::class);
     }
 
+    /**
+     * The projects this User owns. Only Creators own projects; a Client or Agent
+     * has none.
+     *
+     * @return HasMany<Project, $this>
+     */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(Project::class);
+    }
+
     public function isCreator(): bool
     {
         return $this->role === UserRole::Creator;

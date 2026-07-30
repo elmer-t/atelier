@@ -47,6 +47,7 @@ Projects are viewed via a shareable link. Access is controlled per project by a 
 
 **Project**
 - `id`
+- `user_id` — nullable. The Creator who owns the project, set to whoever created it. Ownership decides **who gets notified** when feedback lands (§7.1) — it is not an access boundary; every Creator still reads every project from the admin area (§4.2). Nullable because rows predating ownership have none and deleting an operator nulls it rather than taking their projects with them; an unowned project notifies all Creators.
 - `title`
 - `slug` — unguessable, URL-safe token (e.g. 32+ chars, CSPRNG-generated). Used in shareable links.
 - `status` — enum: `active` | `archived`.
@@ -68,6 +69,7 @@ Projects are viewed via a shareable link. Access is controlled per project by a 
 The per-type storage columns are nullable and only populated for their type; all type-specific *behaviour* (serving origin, on-disk cleanup, stage rendering) lives in per-type handlers keyed off `type`, not in `switch`/`match` scattered through the codebase.
 
 ### 3.2 Relationships
+- Creator (User) 1—* Project, via `projects.user_id`.
 - Project 1—* Artifact.
 - Artifacts ordered by `sort_order` within a project, mixed types freely (e.g. brief → mockup → spec → mockup). Deleting a project cascades to its artifacts; each artifact's on-disk files are purged first (§8.2).
 

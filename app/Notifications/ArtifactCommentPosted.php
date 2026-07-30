@@ -9,9 +9,10 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Sent to the Creator when a Comment or Reply lands on one of their projects
- * (ADR-0003). Client reply-notifications are deferred until a Client verifies
- * their address via the upgrade path, so only Creators are notified today.
+ * Sent to the Creator who owns the project when a Comment or Reply lands on one
+ * of its artifacts (ADR-0003). Client reply-notifications are deferred until a
+ * Client verifies their address via the upgrade path, so only Creators are
+ * notified today.
  */
 class ArtifactCommentPosted extends Notification
 {

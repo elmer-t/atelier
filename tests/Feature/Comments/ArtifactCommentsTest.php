@@ -185,26 +185,54 @@ it('lets the author delete their own comment and the Creator delete any', functi
     expect(Comment::find($other->id))->toBeNull();
 });
 
-it('notifies the Creator of a new comment but not the commenting Creator', function () {
+it('notifies the owning Creator of a new comment but not the commenting Creator', function () {
     Notification::fake();
-    $creator = User::factory()->create();
+    $owner = $this->project->owner;
 
     identify(Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact]))
         ->set('draft', 'Client feedback')
         ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'a'])
         ->call('postComment')->assertHasNoErrors();
 
-    Notification::assertSentTo($creator, ArtifactCommentPosted::class);
+    Notification::assertSentTo($owner, ArtifactCommentPosted::class);
 
     // The Creator's own comment does not notify themselves.
     Notification::fake();
-    Livewire::actingAs($creator)
+    Livewire::actingAs($owner)
         ->test(ArtifactComments::class, ['artifact' => $this->artifact])
         ->set('draft', 'Creator note')
         ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'b'])
         ->call('postComment')->assertHasNoErrors();
 
     Notification::assertNothingSent();
+});
+
+it('leaves Creators who do not own the project out of it', function () {
+    Notification::fake();
+    $owner = $this->project->owner;
+    $otherCreator = User::factory()->create(['name' => 'Someone Else']);
+
+    identify(Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact]))
+        ->set('draft', 'Client feedback')
+        ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'a'])
+        ->call('postComment')->assertHasNoErrors();
+
+    Notification::assertSentTo($owner, ArtifactCommentPosted::class);
+    Notification::assertNotSentTo($otherCreator, ArtifactCommentPosted::class);
+});
+
+it('falls back to every Creator when the project has no owner', function () {
+    Notification::fake();
+    $project = Project::factory()->public()->unowned()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+    $creators = User::factory()->count(2)->create();
+
+    identify(Livewire::test(ArtifactComments::class, ['artifact' => $artifact]))
+        ->set('draft', 'Feedback on an unowned project')
+        ->set('draftAnchor', ['type' => 'text_range', 'quote' => 'a'])
+        ->call('postComment')->assertHasNoErrors();
+
+    Notification::assertSentTo($creators, ArtifactCommentPosted::class);
 });
 
 it('shows author names but never emails on the shared page', function () {

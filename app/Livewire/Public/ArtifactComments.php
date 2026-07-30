@@ -197,7 +197,7 @@ class ArtifactComments extends Component
             'anchor' => $this->draftAnchor,
         ]);
 
-        $this->notifyCreators($comment);
+        $this->notifyProjectOwner($comment);
 
         $this->reset('draft', 'draftAnchor');
         $this->refreshThreads();
@@ -232,7 +232,7 @@ class ArtifactComments extends Component
             'body' => $this->replyDraft,
         ]);
 
-        $this->notifyCreators($comment);
+        $this->notifyProjectOwner($comment);
 
         $this->reset('replyDraft', 'replyingToId');
         $this->refreshThreads();
@@ -431,14 +431,24 @@ class ArtifactComments extends Component
         return $commenter;
     }
 
-    private function notifyCreators(Comment $comment): void
+    /**
+     * Tell the Creator who owns the commented-on project. An unowned project —
+     * one predating ownership, or whose owner was deleted — has nobody to route
+     * to, so it falls back to every Creator rather than dropping the feedback on
+     * the floor. Either way the comment's own author is never told about it.
+     */
+    private function notifyProjectOwner(Comment $comment): void
     {
-        $creators = User::where('role', UserRole::Creator)
-            ->where('id', '!=', $comment->user_id)
-            ->get();
+        $owner = $comment->artifact->project->owner;
 
-        if ($creators->isNotEmpty()) {
-            Notification::send($creators, new ArtifactCommentPosted($comment));
+        $recipients = $owner !== null
+            ? collect([$owner])
+            : User::where('role', UserRole::Creator)->get();
+
+        $recipients = $recipients->reject(fn (User $user): bool => $user->id === $comment->user_id);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new ArtifactCommentPosted($comment));
         }
     }
 

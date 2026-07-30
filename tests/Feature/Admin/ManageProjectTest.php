@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->creator = User::factory()->create();
+    $this->actingAs($this->creator);
 });
 
 it('requires authentication for the admin area', function () {
@@ -30,6 +31,28 @@ it('creates a project as private with generated tokens', function () {
         ->and($project->isPrivate())->toBeTrue()
         ->and(strlen($project->slug))->toBeGreaterThanOrEqual(32)
         ->and(strlen($project->sandbox_token))->toBeGreaterThanOrEqual(32);
+});
+
+it('owns a new project by the Creator who created it', function () {
+    Livewire::test(Index::class)
+        ->set('newTitle', 'Acme Redesign')
+        ->call('create')
+        ->assertRedirect();
+
+    $project = Project::firstWhere('title', 'Acme Redesign');
+
+    expect($project->owner->id)->toBe($this->creator->id)
+        ->and($this->creator->projects()->pluck('title')->all())->toBe(['Acme Redesign']);
+});
+
+it('keeps a project when its owning Creator is deleted, leaving it unowned', function () {
+    $owner = User::factory()->create();
+    $project = Project::factory()->for($owner, 'owner')->create();
+
+    $owner->delete();
+
+    expect($project->refresh()->owner)->toBeNull()
+        ->and(Project::find($project->id))->not->toBeNull();
 });
 
 it('archives and unarchives a project', function () {
