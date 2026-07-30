@@ -152,7 +152,7 @@ select:focus[data-flux-control] {
     @apply border-zinc-200 opacity-50 dark:border-zinc-700;
 }
 .rail-thread[data-anchor-resolved='yes']:hover,
-.rail-thread[data-anchor-resolved='yes'][data-rail-open='yes'] {
+.rail-thread[data-anchor-resolved='yes'][data-rail-active='yes'] {
     @apply opacity-100;
 }
 
@@ -169,31 +169,46 @@ select:focus[data-flux-control] {
     @apply mb-0.5 block;
 }
 
-/* Either end of the bond lights both. */
+/* Either end of the bond lights both, and so does the Thread being attended to. */
 .rail-thread[data-rail-lit='yes'],
-.rail-thread[data-rail-open='yes'] {
+.rail-thread[data-rail-active='yes'] {
     @apply border-amber-500;
 }
 
-/* Compact by default: byline plus one clamped line, opening to the full Thread. */
-.rail-body {
+/* Expanded is the resting state — whole body, replies and all — because feedback you have
+   to click open is feedback nobody reads. Folding one down is a per-Thread choice, and a
+   folded Thread trades its replies for their count. */
+[data-rail-open='no'] .rail-body {
     @apply line-clamp-1;
 }
-[data-rail-open='yes'] .rail-body {
-    @apply line-clamp-none;
-}
-.rail-open-only,
-.rail-close {
-    @apply hidden;
-}
-[data-rail-open='yes'] .rail-open-only {
-    @apply block;
-}
-[data-rail-open='yes'] .rail-close {
-    @apply inline;
-}
+[data-rail-open='no'] .rail-open-only,
 [data-rail-open='yes'] .rail-reply-count {
     @apply hidden;
+}
+
+/* The fold control is the only chrome a Thread has, so it waits to be approached — except on
+   a folded Thread, which must always show the way back out. Faded rather than hidden: it
+   keeps its box, so nothing shifts on approach, and it stays reachable by keyboard. */
+.rail-fold {
+    @apply opacity-0 transition-opacity duration-150;
+}
+.rail-thread:hover .rail-fold,
+.rail-thread[data-rail-active='yes'] .rail-fold,
+.rail-thread[data-rail-open='no'] .rail-fold,
+.rail-fold:focus-visible {
+    @apply opacity-100;
+}
+
+/* New to you: the filled amber mark the pages panel already uses for "new for you", so the
+   surface you arrived from and the one you landed on say it the same way. */
+.rail-unread {
+    @apply relative hidden size-1.5 shrink-0 self-center rounded-full bg-amber-500;
+}
+[data-rail-unread='yes'] .rail-unread {
+    @apply block;
+}
+.rail-unread-count {
+    @apply rounded-full bg-amber-500/15 px-1.5 py-px font-medium text-amber-700 dark:text-amber-400;
 }
 
 .rail-reply {
@@ -201,11 +216,11 @@ select:focus[data-flux-control] {
 }
 
 /* On desktop the alignment says what a Thread is about, so the quoted line is redundant —
-   unless the Thread is open, or its anchor no longer exists. */
+   unless the Thread is the one being attended to, or its anchor no longer exists. */
 .rail-quote {
     @apply hidden;
 }
-[data-rail-open='yes'] .rail-quote,
+[data-rail-active='yes'] .rail-quote,
 [data-anchor-found='no'] .rail-quote {
     @apply mb-1 block;
 }
@@ -251,6 +266,10 @@ select:focus[data-flux-control] {
 /* Parked in the bay at the foot: no depth to place it at, because its text is gone. */
 .rail-map-tick[data-rail-placed='no'] .rail-map-bar {
     @apply bg-amber-600/80;
+}
+/* Where the unread feedback sits in the document, before you have scrolled to any of it. */
+.rail-map-tick[data-rail-unread='yes'] .rail-map-bar {
+    @apply h-[5px] bg-amber-500;
 }
 .rail-map-tick:hover .rail-map-bar,
 .rail-map-tick[data-rail-lit='yes'] .rail-map-bar {

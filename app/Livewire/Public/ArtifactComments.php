@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\CommentRead;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
+use App\Support\Artifacts\FeedbackAttention;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,9 @@ use Livewire\Component;
  * screened for automation before they mint a durable row. Resolving and deleting
  * are not: those are gated on authorization instead, and no anonymous visitor can
  * reach them. See config/atelier.php ('comments') for the limits.
+ *
+ * @property Collection<int, Comment> $threads
+ * @property array<int, int> $unreadThreadIds
  */
 class ArtifactComments extends Component
 {
@@ -102,6 +106,22 @@ class ArtifactComments extends Component
             ->latest()
             ->latest('id')
             ->get();
+    }
+
+    /**
+     * The Threads carrying something this viewer has not caught up with, as ids.
+     *
+     * Threads are expanded from the moment the rail draws, so nothing has to be clicked
+     * to be read — which leaves no disclosure state to infer "new" from. The mark is
+     * therefore read off the same {@see FeedbackAttention} projection the pages panel
+     * counts, so the rail marks exactly the Threads the panel promised were new.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function unreadThreadIds(): array
+    {
+        return app(FeedbackAttention::class)->unreadThreads($this->threads, $this->currentCommenter());
     }
 
     /**
@@ -239,13 +259,13 @@ class ArtifactComments extends Component
     }
 
     /**
-     * Record that the viewer has read this Thread, which the rail calls the moment it
-     * is opened. Opening is what counts: a Thread's Replies are not rendered until then
-     * (see `.rail-open-only`), so it is the only act that puts them on screen.
+     * Record that the viewer has read this Thread, which the rail calls when they turn
+     * to one. Threads are expanded from the start, so being on screen is not the test —
+     * attending to a Thread is, and that is the one moment a visitor tells us so.
      *
-     * Renderless — the rail already reflects the click on its own, and this must not
+     * Renderless — the rail already drops the unread mark on its own, and this must not
      * cost it a morph. It announces the write instead, so the pages panel can re-draw
-     * its status marks; a re-open with nothing new writes nothing and says nothing.
+     * its status marks; a re-read with nothing new writes nothing and says nothing.
      *
      * Unlike posting, this is not rate limited: it mints a row only when a Comment has
      * genuinely landed since the last one, so repetition cannot inflate the table.
@@ -414,7 +434,7 @@ class ArtifactComments extends Component
      */
     private function refreshThreads(): void
     {
-        unset($this->threads);
+        unset($this->threads, $this->unreadThreadIds);
 
         $this->dispatch('threads-updated');
     }

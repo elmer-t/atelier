@@ -62,6 +62,29 @@ class FeedbackAttention
     }
 
     /**
+     * Which of these Threads are unread by this viewer, as ids. The same bucket
+     * {@see for()} counts, resolved one Thread at a time so the feedback rail can mark
+     * them individually — a panel reading "2 new replies for you" therefore always has
+     * exactly two marked Threads behind it.
+     *
+     * @param  Collection<int, Comment>  $threads
+     * @return array<int, int>
+     */
+    public function unreadThreads(Collection $threads, ?User $viewer): array
+    {
+        if ($viewer === null) {
+            return [];
+        }
+
+        $watermarks = $this->watermarks($viewer, $threads->pluck('id'));
+
+        return $threads
+            ->filter(fn (Comment $thread): bool => $this->isUnread($thread, $viewer, $watermarks))
+            ->pluck('id')
+            ->all();
+    }
+
+    /**
      * @param  Collection<int, Comment>  $threads
      * @param  array<int, int>  $watermarks
      */
@@ -85,12 +108,10 @@ class FeedbackAttention
                 continue;
             }
 
-            $latest = $this->latestCommentId($thread);
-
-            if (($watermarks[$thread->id] ?? 0) >= $latest) {
-                $awaiting++;
-            } else {
+            if ($this->isUnread($thread, $viewer, $watermarks)) {
                 $unread++;
+            } else {
+                $awaiting++;
             }
         }
 
@@ -101,6 +122,19 @@ class FeedbackAttention
             resolved: $resolved,
             threads: $threads->count(),
         );
+    }
+
+    /**
+     * Whether this Thread is waiting on the viewer with something they have not seen —
+     * the one predicate both the panel's count and the rail's marks are drawn from.
+     *
+     * @param  array<int, int>  $watermarks
+     */
+    private function isUnread(Comment $thread, ?User $viewer, array $watermarks): bool
+    {
+        return ! $thread->isResolved()
+            && $this->waitsOn($thread, $viewer)
+            && ($watermarks[$thread->id] ?? 0) < $this->latestCommentId($thread);
     }
 
     /**

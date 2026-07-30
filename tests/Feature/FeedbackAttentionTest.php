@@ -195,6 +195,57 @@ it('shows an unidentified visitor no personal marks on the rendered page', funct
         ->assertDontSee('data-attention="unread"', false);
 });
 
+it('marks in the rail exactly the threads the panel counted as new', function () {
+    $mine = Comment::factory()->for($this->artifact)->for($this->client, 'author')->create();
+    Comment::factory()->replyTo($mine)->for($this->creator, 'author')->create();
+
+    // Someone else's conversation is not the client's to catch up on.
+    $theirs = Comment::factory()->for($this->artifact)->for($this->stranger, 'author')->create();
+
+    $rail = Livewire::actingAs($this->client)
+        ->test(ArtifactComments::class, ['artifact' => $this->artifact]);
+
+    expect($rail->instance()->unreadThreadIds)->toBe([$mine->id]);
+
+    // Their Thread is in the rail all the same; it is simply not new to this reader.
+    $rail->assertSeeHtml('rail-unread-count')
+        ->assertSeeHtml('data-comment-id="'.$theirs->id.'"')
+        ->assertSeeHtml('data-rail-unread="yes"');
+});
+
+it('retires the mark once the thread has been read, and raises it again on a later reply', function () {
+    $thread = Comment::factory()->for($this->artifact)->for($this->client, 'author')->create();
+    Comment::factory()->replyTo($thread)->for($this->creator, 'author')->create();
+
+    CommentRead::record($this->client, $thread->fresh());
+
+    $read = Livewire::actingAs($this->client)
+        ->test(ArtifactComments::class, ['artifact' => $this->artifact]);
+
+    expect($read->instance()->unreadThreadIds)->toBe([]);
+    $read->assertDontSeeHtml('data-rail-unread="yes"');
+
+    Comment::factory()->replyTo($thread)->for($this->creator, 'author')->create();
+
+    $moved = Livewire::actingAs($this->client)
+        ->test(ArtifactComments::class, ['artifact' => $this->artifact]);
+
+    expect($moved->instance()->unreadThreadIds)->toBe([$thread->id]);
+    $moved->assertSeeHtml('data-rail-unread="yes"');
+});
+
+it('leaves the rail unmarked for a visitor with no established identity', function () {
+    $thread = Comment::factory()->for($this->artifact)->for($this->client, 'author')->create();
+    Comment::factory()->replyTo($thread)->for($this->creator, 'author')->create();
+
+    $rail = Livewire::test(ArtifactComments::class, ['artifact' => $this->artifact]);
+
+    expect($rail->instance()->unreadThreadIds)->toBe([]);
+
+    $rail->assertDontSeeHtml('data-rail-unread="yes"')
+        ->assertDontSeeHtml('rail-unread-count');
+});
+
 it('drops a reader read history when the reader is erased', function () {
     $thread = Comment::factory()->for($this->artifact)->for($this->client, 'author')->create();
     Comment::factory()->replyTo($thread)->for($this->creator, 'author')->create();
