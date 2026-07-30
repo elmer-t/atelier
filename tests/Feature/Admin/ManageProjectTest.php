@@ -152,6 +152,24 @@ it('renders the manage page with the artifact list and the settings modal', func
         ->assertSee('project-settings', escape: false);
 });
 
+it('names the owning Creator in the header', function () {
+    $owner = User::factory()->create(['name' => 'Ada Operator']);
+    $project = Project::factory()->for($owner, 'owner')->create();
+
+    $this->get(route('admin.projects.manage', $project))
+        ->assertOk()
+        ->assertSee('Ada Operator')
+        ->assertDontSee('Unowned');
+});
+
+it('flags an unowned project in the header instead of naming an owner', function () {
+    $project = Project::factory()->unowned()->create();
+
+    $this->get(route('admin.projects.manage', $project))
+        ->assertOk()
+        ->assertSee('Unowned');
+});
+
 it('offers the shareable link as a new-tab link', function () {
     $project = Project::factory()->public()->create();
 

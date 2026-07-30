@@ -63,6 +63,20 @@
                             </flux:badge>
                         </flux:tooltip>
                     @endif
+
+                    {{-- Who owns this project, i.e. who feedback on it reaches. --}}
+                    @if ($project->owner)
+                        <flux:tooltip content="Owner — feedback on this project notifies {{ $project->owner->name }}">
+                            <span class="flex shrink-0 items-center gap-1 text-xs text-zinc-400">
+                                <flux:icon.user variant="micro" />
+                                <span class="max-w-32 truncate">{{ $project->owner->name }}</span>
+                            </span>
+                        </flux:tooltip>
+                    @else
+                        <flux:tooltip content="No owner — feedback on this project notifies every Creator">
+                            <flux:badge size="sm" color="amber">Unowned</flux:badge>
+                        </flux:tooltip>
+                    @endif
                 </div>
 
                 {{-- Off-screen twin for the execCommand fallback above. --}}

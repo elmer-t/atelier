@@ -50,7 +50,7 @@ class Manage extends Component
 
     public function mount(Project $project): void
     {
-        $this->project = $project;
+        $this->project = $project->load('owner');
         $this->title = $project->title;
         $this->visibility = $project->visibility->value;
         $this->status = $project->status->value;
