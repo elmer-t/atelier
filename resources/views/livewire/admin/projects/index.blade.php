@@ -102,10 +102,10 @@
                         </flux:table.cell>
                         <flux:table.cell align="end">
                             <div class="flex items-center justify-end gap-1">
-                                <flux:button size="xs" variant="ghost" icon="link"
-                                    x-on:click="navigator.clipboard.writeText('{{ route('project.show', $project) }}'); $flux.toast('Link copied')">
+                                <x-copy-button :text="route('project.show', $project)" toast="Link copied"
+                                    size="xs" variant="ghost" icon="link">
                                     Copy link
-                                </flux:button>
+                                </x-copy-button>
 
                                 <flux:dropdown position="bottom" align="end">
                                     <flux:button size="xs" variant="ghost" icon="ellipsis-horizontal" inset />

@@ -140,3 +140,14 @@ it('paginates the list and returns to the first page when a filter changes', fun
         ->set('search', 'a')
         ->assertSet('paginators.page', 1);
 });
+
+it('copies the shareable link with a fallback for insecure contexts', function () {
+    $project = Project::factory()->public()->create();
+
+    $this->get(route('admin.projects'))
+        ->assertOk()
+        ->assertSee('Copy link')
+        ->assertSee(route('project.show', $project))
+        ->assertSee('window.isSecureContext', escape: false)
+        ->assertSee("document.execCommand('copy')", escape: false);
+});
