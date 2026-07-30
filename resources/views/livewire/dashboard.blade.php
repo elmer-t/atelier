@@ -1,14 +1,20 @@
 @php
     $unresolvedCount = array_sum(array_column($this->feedback, 'count'));
-    $allClear = $this->feedback === [] && $this->needsContent->isEmpty() && $this->readyToShare->isEmpty();
+    $nothingToShow = $this->feedback === [] && $this->needsContent->isEmpty() && $this->readyToShare->isEmpty();
 @endphp
 
 <div class="mx-auto w-full max-w-5xl px-6 py-8">
-    <div class="mb-8 flex items-end justify-between">
+    <div class="mb-6 flex items-end justify-between">
         <div>
             <flux:heading size="xl">Good to see you</flux:heading>
             <flux:subheading>
-                {{ $allClear ? "You're all caught up. Nice." : "Here's everything waiting on you." }}
+                @if ($nothingToShow && $this->isFiltered)
+                    Nothing here matches “{{ $search }}”.
+                @elseif ($nothingToShow)
+                    You're all caught up. Nice.
+                @else
+                    Here's everything waiting on you.
+                @endif
             </flux:subheading>
         </div>
 
@@ -16,6 +22,30 @@
             New project
         </flux:button>
     </div>
+
+    {{-- Hidden only when there is genuinely nothing to narrow down. --}}
+    @if (! $nothingToShow || $this->isFiltered)
+        <div class="mb-6 flex items-center gap-2">
+            <flux:input
+                class="flex-1"
+                wire:model.live.debounce.300ms="search"
+                icon="magnifying-glass"
+                placeholder="Filter by project or artifact name…"
+                clearable
+            />
+
+            <flux:select wire:model.live="sort" class="w-auto shrink-0">
+                <flux:select.option value="priority">Priority</flux:select.option>
+                <flux:select.option value="date">Date</flux:select.option>
+                <flux:select.option value="project">Project name</flux:select.option>
+                <flux:select.option value="artifact">Artifact name</flux:select.option>
+            </flux:select>
+
+            @if ($this->isFiltered)
+                <flux:button variant="subtle" icon="x-mark" wire:click="clearFilters" class="shrink-0">Clear</flux:button>
+            @endif
+        </div>
+    @endif
 
     <div class="space-y-8">
         {{-- Feedback to review --}}
@@ -29,20 +59,33 @@
 
                 <div class="divide-y divide-zinc-100 overflow-hidden rounded-xl border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-700">
                     @foreach ($this->feedback as $row)
-                        <div wire:key="feedback-{{ $row['project']->id }}" class="flex items-center gap-4 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                        <div wire:key="feedback-{{ $row['artifact']->id }}" class="flex items-center gap-4 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                             <div class="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
                                 <span class="text-sm font-semibold">{{ $row['count'] }}</span>
                             </div>
                             <div class="min-w-0 flex-1">
-                                <div class="truncate font-medium">{{ $row['project']->title }}</div>
-                                <div class="text-xs text-zinc-400">
-                                    {{ $row['count'] }} unresolved {{ Str::plural('thread', $row['count']) }}
+                                {{-- Straight to the artifact the feedback sits on; the Creator's
+                                     session skips the password gate. --}}
+                                @if ($row['project']->isHardDisabled())
+                                    <div class="flex items-center gap-2">
+                                        <span class="truncate font-medium">{{ $row['artifact']->title }}</span>
+                                        <flux:badge size="sm" color="amber">Project unavailable</flux:badge>
+                                    </div>
+                                @else
+                                    <a
+                                        href="{{ route('project.artifact', ['project' => $row['project'], 'artifact' => $row['artifact']]) }}"
+                                        class="block truncate font-medium hover:underline"
+                                    >
+                                        {{ $row['artifact']->title }}
+                                    </a>
+                                @endif
+
+                                <div class="truncate text-xs text-zinc-400">
+                                    {{ $row['project']->title }}
+                                    · {{ $row['count'] }} unresolved {{ Str::plural('thread', $row['count']) }}
                                     · last {{ $row['latest']?->diffForHumans() }}
                                 </div>
                             </div>
-                            <flux:button size="sm" variant="primary" :href="route('admin.projects.manage', $row['project'])" wire:navigate>
-                                Review
-                            </flux:button>
                         </div>
                     @endforeach
                 </div>
@@ -110,11 +153,16 @@
             </section>
         @endif
 
-        {{-- All caught up --}}
-        @if ($allClear)
+        {{-- Nothing to show --}}
+        @if ($nothingToShow)
             <div class="rounded-xl border border-dashed border-zinc-300 p-12 text-center dark:border-zinc-700">
-                <flux:icon.check-circle class="mx-auto mb-3 text-emerald-500" />
-                <flux:text>Nothing needs you right now. Start something new?</flux:text>
+                @if ($this->isFiltered)
+                    <flux:icon.magnifying-glass class="mx-auto mb-3 text-zinc-400" />
+                    <flux:text>No project or artifact matches that name.</flux:text>
+                @else
+                    <flux:icon.check-circle class="mx-auto mb-3 text-emerald-500" />
+                    <flux:text>Nothing needs you right now. Start something new?</flux:text>
+                @endif
             </div>
         @endif
     </div>
