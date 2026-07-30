@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\CommentRead;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
+use App\Notifications\ReplyOnYourThread;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -61,6 +62,15 @@ class ArtifactComments extends Component
     public ?int $replyingToId = null;
 
     public string $replyDraft = '';
+
+    /**
+     * Whether to offer the browser-push opt-in. Raised the moment a Client posts, so the
+     * away-from-page channel is offered right where a reply signal would matter — the one
+     * contextual moment a first-time commenter (with nothing unread yet, so no banner) can
+     * be reached. The prompt itself only shows if the device is not already subscribed;
+     * the permission request is still gated on the explicit click (#35).
+     */
+    public bool $offerPush = false;
 
     /**
      * Honeypot. Rendered off-screen and out of the tab order, so a human never
@@ -198,6 +208,7 @@ class ArtifactComments extends Component
         ]);
 
         $this->notifyProjectOwner($comment);
+        $this->offerPushTo($commenter);
 
         $this->reset('draft', 'draftAnchor');
         $this->refreshThreads();
@@ -233,6 +244,8 @@ class ArtifactComments extends Component
         ]);
 
         $this->notifyProjectOwner($comment);
+        $this->notifyThreadAuthor($root, $comment);
+        $this->offerPushTo($commenter);
 
         $this->reset('replyDraft', 'replyingToId');
         $this->refreshThreads();
@@ -449,6 +462,35 @@ class ArtifactComments extends Component
 
         if ($recipients->isNotEmpty()) {
             Notification::send($recipients, new ArtifactCommentPosted($comment));
+        }
+    }
+
+    /**
+     * Give the Thread's original author the away-from-page reply signal they never
+     * had (#35). Push-only, and only when someone *else* replies — a Thread author
+     * answering on their own Thread is not told about their own words. A deactivated
+     * author is nobody to notify, same as everywhere else identity is resolved.
+     */
+    private function notifyThreadAuthor(Comment $root, Comment $reply): void
+    {
+        $author = $root->author;
+
+        if ($author->isDeactivated() || $author->id === $reply->user_id) {
+            return;
+        }
+
+        $author->notify(new ReplyOnYourThread($reply));
+    }
+
+    /**
+     * Offer the browser-push opt-in to a Client who has just posted. Creators have the
+     * bell and Settings for this, so the contextual post-comment prompt is the Client's
+     * alone — and it is only a prompt: the permission request stays gated on their click.
+     */
+    private function offerPushTo(User $commenter): void
+    {
+        if ($commenter->isClient()) {
+            $this->offerPush = true;
         }
     }
 
