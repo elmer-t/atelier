@@ -4,9 +4,12 @@ namespace App\Notifications;
 
 use App\Models\Comment;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 /**
  * Sent to the Creator who owns the project when a Comment or Reply lands on one
@@ -21,11 +24,21 @@ class ArtifactCommentPosted extends Notification
     public function __construct(public Comment $comment) {}
 
     /**
+     * Mail and the in-app bell always; a browser push too when this Creator has
+     * subscribed a device. Web push bypasses ADR-0003's email-verification gate —
+     * consent here is the browser's permission grant, not a verified address.
+     *
      * @return array<int, string>
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        $channels = ['mail', 'database'];
+
+        if ($notifiable instanceof User && $notifiable->hasPushSubscriptions()) {
+            $channels[] = WebPushChannel::class;
+        }
+
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -50,6 +63,26 @@ class ArtifactCommentPosted extends Notification
     }
 
     /**
+     * The browser push a subscribed Creator gets. Clicking it opens the artifact,
+     * which the service worker reads off `data.url`.
+     */
+    public function toWebPush(object $notifiable, self $notification): WebPushMessage
+    {
+        $artifact = $this->comment->artifact;
+        $project = $artifact->project;
+        $verb = $this->comment->isReply() ? __('replied on') : __('commented on');
+
+        return (new WebPushMessage)
+            ->title(__(':name :verb :title', [
+                'name' => $this->comment->author->name,
+                'verb' => $verb,
+                'title' => $artifact->title,
+            ]))
+            ->body($this->comment->body)
+            ->data(['url' => route('project.artifact', [$project, $artifact])]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(object $notifiable): array
@@ -61,6 +94,7 @@ class ArtifactCommentPosted extends Notification
             'artifact_id' => $artifact->id,
             'artifact_title' => $artifact->title,
             'project_id' => $artifact->project_id,
+            'project_title' => $artifact->project->title,
             'author' => $this->comment->author->name,
             'is_reply' => $this->comment->isReply(),
             'body' => $this->comment->body,

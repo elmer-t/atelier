@@ -17,6 +17,7 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property int $id
@@ -38,7 +39,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasApiTokens, HasFactory, HasPushSubscriptions, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -115,6 +116,16 @@ class User extends Authenticatable implements PasskeyUser
     public function reactivate(): void
     {
         $this->forceFill(['deactivated_at' => null])->save();
+    }
+
+    /**
+     * Whether this User has any browser push subscription — the one gate that decides
+     * if a notification's `via()` should add the web-push channel (#35). Keeping it here
+     * lets every push-capable notification ask the same question the same way.
+     */
+    public function hasPushSubscriptions(): bool
+    {
+        return $this->pushSubscriptions()->exists();
     }
 
     /**

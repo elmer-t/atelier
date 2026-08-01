@@ -7,6 +7,10 @@
 
             {{-- Main stage --}}
             <main class="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
+                {{-- The away-from-page reply signal, back on the page for a recognised
+                     commenter with unread replies (#35). Renders nothing for anyone else. --}}
+                <livewire:public.reply-banner :project="$project" :wire:key="'reply-banner-'.$project->id" />
+
                 @if (! $current)
                     <div class="flex h-full items-center justify-center p-12 text-center">
                         <p class="text-zinc-400 dark:text-zinc-500">This project has no pages yet.</p>
