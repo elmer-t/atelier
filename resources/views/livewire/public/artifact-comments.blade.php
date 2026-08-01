@@ -8,6 +8,8 @@
 
     $draftQuote = $draftAnchor['quote'] ?? null;
     $draftPointY = $draftAnchor['y'] ?? null;
+
+    $unreadIds = $this->unreadThreadIds;
 @endphp
 
 {{--
@@ -28,6 +30,12 @@
     searching the stage for the quote on every redraw. The stage lives outside this component,
     so that pass is driven from here on load and on `threads-updated` rather than by the morph.
 
+    Threads are expanded from the moment the rail draws — body, replies and all — because
+    feedback you have to click open is feedback nobody reads. Folding one down is a per-Thread
+    choice, so the accent rule follows attention (`data-rail-active`) rather than disclosure,
+    and what is new to you is said outright with a mark instead of being inferred from what
+    you have not yet opened.
+
     Whether the rail is showing at all belongs to the stage bar, which hides it with CSS keyed
     off its own state (see components/public/stage-chrome.blade.php). The rail therefore has no
     collapse control of its own: it asks to be shown by dispatching `stage-feedback-open`.
@@ -39,9 +47,29 @@
         gutter: @js($artifact->isMarkdown()),
         anchorType: @js($anchorType),
 
-        /** The open Thread, and the one under the cursor on either side of the bond. */
+        /** The Thread being attended to, and the one under the cursor on either side of the bond. */
         activeId: null,
         hoverId: null,
+
+        /** Threads folded down to their byline by hand. Everything else stays expanded. */
+        folded: [],
+
+        /** Threads that were carrying something new to this viewer when the rail drew. */
+        unread: @js(array_map('intval', $unreadIds)),
+
+        /**
+         * Threads read during this visit. The server write is renderless, so the unread
+         * marks it retires would otherwise sit there until the next full redraw.
+         */
+        seen: [],
+
+        isUnread(id) {
+            return this.unread.includes(id) && ! this.seen.includes(id);
+        },
+
+        unreadCount() {
+            return this.unread.filter((id) => ! this.seen.includes(id)).length;
+        },
 
         /** Threads the alignment has carried past the top and bottom edges of the rail. */
         above: 0,
@@ -250,8 +278,13 @@
             if (pin > -1) {
                 live[pin].y = live[pin].target;
 
+                // Upward from the pin, each item clears the one below it — and nothing else.
+                // Flooring this at the top edge as well would give every item the pin has
+                // taken the room from the same y, printing them over each other in a pile at
+                // the top of the rail. The layer clips, so an item with no room left simply
+                // leaves, which is the whole of what being carried out of view means here.
                 for (let i = pin - 1; i >= 0; i--) {
-                    live[i].y = Math.max(reserve, Math.min(live[i].target, live[i + 1].y - live[i].height - gap));
+                    live[i].y = Math.min(live[i].target, live[i + 1].y - live[i].height - gap);
                 }
 
                 for (let i = pin + 1; i < live.length; i++) {
@@ -268,10 +301,14 @@
 
             live.forEach((item) => place(item.el, item.y));
 
+            // Pushed off the top by the pin rather than carried off it by the article, but
+            // out of the rail either way — so the edge counter accounts for it the same.
+            const risen = live.filter((item) => item.y + item.height + gap < reserve);
+            const above = [...gone, ...risen];
             const coming = live.filter((item) => item.y > layerBox.height - 28);
 
-            this.above = gone.length;
-            this.aboveId = gone.length ? gone[gone.length - 1].el.dataset.commentId : null;
+            this.above = above.length;
+            this.aboveId = above.length ? above[above.length - 1].el.dataset.commentId : null;
             this.below = coming.length;
             this.belowId = coming.length ? coming[0].el.dataset.commentId : null;
 
@@ -439,15 +476,22 @@
         /* ----------------------------------------------------------------- interaction */
 
         /**
-         * Opening a Thread is what registers it as read: its Replies are `display:none`
-         * until then, so this is the only act that puts them on screen. Renderless on
-         * the server, so it never costs the rail a morph mid-interaction.
+         * Turning to a Thread is what registers it as read. Every Thread is already
+         * expanded, so there is no disclosure to take as the signal — attending to one
+         * is. Renderless on the server, so it never costs the rail a morph mid-interaction;
+         * the mark is retired here so the client does not wait for a redraw to see it go.
          */
         markSeen(id) {
-            $wire.markThreadSeen(Number(id));
+            const key = Number(id);
+
+            if (! this.seen.includes(key)) {
+                this.seen.push(key);
+            }
+
+            $wire.markThreadSeen(key);
         },
 
-        /** Content → feedback: open the Thread and bring it to the eye. */
+        /** Content → feedback: turn to the Thread and bring it to the eye. */
         focusThread(id) {
             this.reveal();
 
@@ -481,20 +525,39 @@
             this.focusThread(id);
         },
 
-        toggle(id) {
-            this.activeId = this.activeId === id ? null : id;
+        /**
+         * Turn to a Thread: it becomes the one the rail holds in place and the one the
+         * quote and accent are drawn for. It is already expanded, so nothing opens —
+         * which is why this is idempotent, and why a click inside a Thread you are
+         * already reading neither collapses it nor drags the article about.
+         */
+        attend(id) {
+            this.markSeen(id);
 
             if (this.activeId === id) {
-                this.markSeen(id);
+                return;
             }
+
+            this.activeId = id;
 
             this.$nextTick(() => {
                 this.layout();
-
-                if (this.activeId === id) {
-                    this.focusAnchor(id);
-                }
+                this.focusAnchor(id);
             });
+        },
+
+        /** Fold one Thread down to its byline, or unfold it. Expanded is the resting state. */
+        toggleFold(id) {
+            const at = this.folded.indexOf(id);
+
+            if (at > -1) {
+                this.folded.splice(at, 1);
+            } else {
+                this.folded.push(id);
+            }
+
+            this.markSeen(id);
+            this.$nextTick(() => this.layout());
         },
 
         /**
@@ -709,7 +772,9 @@
                 data-rail-tick
                 data-comment-id="{{ $thread->id }}"
                 data-anchor-resolved="{{ $thread->isResolved() ? 'yes' : 'no' }}"
+                data-rail-unread="{{ in_array($thread->id, $unreadIds, true) ? 'yes' : 'no' }}"
                 @if (($thread->anchor['y'] ?? null) !== null) data-anchor-y="{{ $thread->anchor['y'] }}" @endif
+                x-bind:data-rail-unread="isUnread({{ $thread->id }}) ? 'yes' : 'no'"
                 x-bind:data-rail-lit="String(hoverId) === @js((string) $thread->id) || activeId === {{ $thread->id }} ? 'yes' : 'no'"
                 x-on:mouseenter="hoverId = @js((string) $thread->id); schedule()"
                 x-on:mouseleave="hoverId = null; schedule()"
@@ -738,7 +803,15 @@
         <div class="shrink-0 border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
             <div class="flex items-baseline justify-between gap-2">
                 <span class="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">{{ __('Feedback') }}</span>
-                <span class="text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">{{ $this->threads->count() }}</span>
+                <span class="flex items-center gap-2 text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500">
+                    {{-- How much of the rail is new to you, before you have read a line of it. --}}
+                    @if (count($unreadIds) > 0)
+                        <span class="rail-unread-count" x-show="unreadCount() > 0">
+                            <span x-text="unreadCount()">{{ count($unreadIds) }}</span> {{ __('new') }}
+                        </span>
+                    @endif
+                    {{ $this->threads->count() }}
+                </span>
             </div>
 
             @unless (filled($draftAnchor))
@@ -865,20 +938,28 @@
                 @php
                     $quote = $thread->anchor['quote'] ?? null;
                     $pointY = $thread->anchor['y'] ?? null;
+                    $isUnread = in_array($thread->id, $unreadIds, true);
                 @endphp
 
                 <div wire:key="thread-{{ $thread->id }}"
                     data-rail-item
                     data-comment-id="{{ $thread->id }}"
                     data-anchor-resolved="{{ $thread->isResolved() ? 'yes' : 'no' }}"
+                    data-rail-unread="{{ $isUnread ? 'yes' : 'no' }}"
+                    {{-- Expanded and unattended is the state the rail rests in, written here
+                         as well as bound so the first paint is already it. --}}
+                    data-rail-open="yes"
+                    data-rail-active="no"
                     @if (filled($quote)) data-anchor-quote="{{ $quote }}" @endif
                     @if ($pointY !== null) data-anchor-y="{{ $pointY }}" @endif
-                    x-bind:data-rail-open="activeId === {{ $thread->id }} ? 'yes' : 'no'"
+                    x-bind:data-rail-open="folded.includes({{ $thread->id }}) ? 'no' : 'yes'"
+                    x-bind:data-rail-active="activeId === {{ $thread->id }} ? 'yes' : 'no'"
+                    x-bind:data-rail-unread="isUnread({{ $thread->id }}) ? 'yes' : 'no'"
                     x-bind:data-rail-lit="String(hoverId) === @js((string) $thread->id) ? 'yes' : 'no'"
                     x-bind:data-rail-pin="activeId === {{ $thread->id }} && ! @js(filled($draftAnchor)) ? '' : null"
                     x-on:mouseenter="hoverId = @js((string) $thread->id); schedule()"
                     x-on:mouseleave="hoverId = null; schedule()"
-                    x-on:click="if (activeId !== {{ $thread->id }}) { toggle({{ $thread->id }}) }"
+                    x-on:click="attend({{ $thread->id }})"
                     class="rail-item rail-thread">
 
                     {{-- Detached: the quote is the only trace left, so it is always shown here. --}}
@@ -893,17 +974,26 @@
                     @endif
 
                     <div class="flex items-baseline gap-2">
+                        {{-- New to you: the same filled amber mark the pages panel uses, so the
+                             surface you arrived from and the one you landed on agree. --}}
+                        <span class="rail-unread" title="{{ __('New since you last looked') }}">
+                            <span class="sr-only">{{ __('New since you last looked') }}</span>
+                        </span>
                         <span class="truncate text-[13px] font-semibold text-zinc-800 dark:text-zinc-100">{{ $thread->author->name }}</span>
                         <span class="shrink-0 text-[11px] text-zinc-400">{{ $thread->created_at?->diffForHumans(short: true) }}</span>
                         @if ($thread->isResolved())
                             <span class="shrink-0 text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-500">{{ __('Resolved') }}</span>
                         @endif
                         @if ($thread->replies->isNotEmpty())
-                            <span class="rail-reply-count ml-auto shrink-0 text-[11px] tabular-nums text-zinc-400">{{ $thread->replies->count() }} ↩</span>
+                            {{-- What a folded Thread trades its replies for; redundant once
+                                 they are on screen, which is the resting state. --}}
+                            <span class="rail-reply-count shrink-0 text-[11px] tabular-nums text-zinc-400">{{ $thread->replies->count() }} ↩</span>
                         @endif
-                        <button type="button" x-on:click.stop="toggle({{ $thread->id }})"
-                            class="rail-close ml-auto shrink-0 text-[11px] text-zinc-400 transition hover:text-zinc-800 dark:hover:text-zinc-100"
-                            title="{{ __('Collapse') }}">▲</button>
+                        <button type="button" x-on:click.stop="toggleFold({{ $thread->id }})"
+                            class="rail-fold ml-auto shrink-0 text-[11px] text-zinc-400 transition hover:text-zinc-800 dark:hover:text-zinc-100"
+                            x-bind:aria-expanded="folded.includes({{ $thread->id }}) ? 'false' : 'true'"
+                            x-bind:title="folded.includes({{ $thread->id }}) ? @js(__('Expand')) : @js(__('Collapse'))"
+                            x-text="folded.includes({{ $thread->id }}) ? '▼' : '▲'">▲</button>
                     </div>
 
                     <p class="rail-body mt-1 whitespace-pre-line text-[13px] leading-snug text-zinc-600 dark:text-zinc-300">{{ $thread->body }}</p>

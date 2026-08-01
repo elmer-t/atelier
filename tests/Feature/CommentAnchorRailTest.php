@@ -184,3 +184,71 @@ it('keeps a point anchor’s coordinates out of the rail while still placing by 
         ->assertDontSee('Pinned at')
         ->assertSeeHtml('data-anchor-y="62.5"');
 });
+
+/**
+ * Feedback you have to click open is feedback nobody reads, so a Thread arrives expanded —
+ * whole body, replies and all — and folding one down is a per-Thread choice made after the
+ * fact. Nothing is collapsed when the rail draws.
+ */
+it('draws every Thread expanded, with folding reserved for a deliberate choice', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    $thread = Comment::factory()->for($artifact)->create([
+        'body' => 'The second half needs a rewrite.',
+        'anchor' => ['type' => 'text_range', 'quote' => 'Brief'],
+    ]);
+    Comment::factory()->replyTo($thread)->create(['body' => 'Agreed, I will take a pass.']);
+
+    $this->get(route('project.artifact', [$project, $artifact]))
+        ->assertOk()
+        ->assertSee('folded: []', escape: false)
+        ->assertSee('data-rail-open="yes"', escape: false)
+        ->assertSee("folded.includes({$thread->id}) ? 'no' : 'yes'", escape: false)
+        // The replies are in the document from the start, not disclosed on a click.
+        ->assertSee('Agreed, I will take a pass.');
+});
+
+/**
+ * Turning to a Thread holds it level with its text and pushes its neighbours out of the way.
+ * The ones above it have to be free to leave the rail: floored at the top edge instead, every
+ * Thread the pinned one took the room from would land on the same spot and print over the
+ * others — the pile the rail is meant to be incapable of.
+ */
+it('lets Threads the attended one displaced leave the top of the rail rather than pile on it', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'Brief'],
+    ]);
+
+    $response = $this->get(route('project.artifact', [$project, $artifact]))->assertOk();
+
+    // Upward from the pin an item clears its lower neighbour and nothing else.
+    $response->assertSee('live[i].y = Math.min(live[i].target, live[i + 1].y - live[i].height - gap);', escape: false);
+    $response->assertDontSee('Math.max(reserve, Math.min(live[i].target', escape: false);
+
+    // And what left that way is counted at the edge, so it stays one click away.
+    $response->assertSee('const risen = live.filter((item) => item.y + item.height + gap < reserve);', escape: false);
+    $response->assertSee('this.above = above.length;', escape: false);
+});
+
+/**
+ * The rail's whole behaviour lives in one `x-data` attribute, delimited by double quotes. A
+ * bare `"` anywhere in that script — in a comment as easily as in a string — closes the
+ * attribute early, and the remainder of the component spills onto the page as text. Nothing
+ * about the source looks wrong when it happens, so the boundary is asserted here instead.
+ */
+it('keeps the rail’s script inside its attribute rather than spilling it onto the page', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    Comment::factory()->for($artifact)->create([
+        'anchor' => ['type' => 'text_range', 'quote' => 'Brief'],
+    ]);
+
+    $html = $this->get(route('project.artifact', [$project, $artifact]))->assertOk()->getContent();
+
+    expect($html)->toMatch('/x-data="\{[^"]*bindAnchor\(el, id\)[^"]*\}"/s');
+});
