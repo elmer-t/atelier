@@ -59,10 +59,19 @@
                         'bg-zinc-50/70 dark:bg-zinc-800/40' => $notification->unread(),
                     ])
                 >
-                    <span class="text-sm text-zinc-800 dark:text-zinc-100">
-                        <span class="font-medium">{{ $data['author'] ?? __('Someone') }}</span>
+                    {{-- Weight is what separates read from unread: the whole line carries it,
+                         so nothing inside may set a weight of its own. --}}
+                    <span
+                        data-test="notification-message"
+                        @class([
+                            'text-sm text-zinc-800 dark:text-zinc-100',
+                            'font-semibold' => $notification->unread(),
+                            'font-normal' => $notification->read(),
+                        ])
+                    >
+                        {{ $data['author'] ?? __('Someone') }}
                         {{ ($data['is_reply'] ?? false) ? __('replied on') : __('commented on') }}
-                        <span class="font-medium">{{ $data['artifact_title'] ?? __('an artifact') }}</span>
+                        {{ $data['artifact_title'] ?? __('an artifact') }}
                     </span>
                     <span class="text-xs text-zinc-400 dark:text-zinc-500">
                         @if (! empty($data['project_title'])){{ $data['project_title'] }} · @endif{{ $notification->created_at?->diffForHumans() }}
@@ -77,12 +86,37 @@
 
         {{-- Browser-push opt-in. Explicit and contextual: the permission prompt is only
              ever raised by this click, never on load (#35). --}}
-        <div class="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+        <div
+            class="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800"
+            x-data="{
+                on: false,
+
+                /** Whether the last attempt was turned down — see the settings page for why. */
+                failed: false,
+
+                init() {
+                    this.on = window.atelierPush?.isSubscribed?.() ?? false;
+                },
+
+                async toggle() {
+                    if (this.on) {
+                        await window.atelierPush?.disable();
+                        this.on = false;
+                        this.failed = false;
+
+                        return;
+                    }
+
+                    const result = await window.atelierPush?.enable('creator');
+
+                    this.on = result?.ok ?? false;
+                    this.failed = ! this.on;
+                },
+            }"
+        >
             <button
                 type="button"
-                x-data="{ on: false }"
-                x-init="on = window.atelierPush?.isSubscribed?.() ?? false"
-                x-on:click="on ? window.atelierPush?.disable().then(() => on = false) : window.atelierPush?.enable('creator').then(ok => on = ok)"
+                x-on:click="toggle()"
                 class="flex w-full items-center gap-2 text-xs text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
                 data-test="enable-push"
             >
@@ -90,6 +124,13 @@
                 <span x-show="! on">{{ __('Enable browser notifications') }}</span>
                 <span x-show="on" x-cloak>{{ __('Disable browser notifications') }}</span>
             </button>
+
+            {{-- The bell has no room to explain; it says that it failed and points at the
+                 page that names the reason. --}}
+            <p x-show="failed" x-cloak class="mt-2 text-xs text-red-500 dark:text-red-400" data-test="bell-push-failed">
+                {{ __('Could not turn notifications on.') }}
+                <a href="{{ route('notifications.edit') }}" class="underline underline-offset-2" wire:navigate>{{ __('See why') }}</a>
+            </p>
         </div>
     </div>
 </div>

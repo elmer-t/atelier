@@ -34,7 +34,10 @@ it('shows a dismissible banner to an identified commenter with unread replies', 
         ->test(ReplyBanner::class, ['project' => $project])
         ->assertSeeHtml('data-test="reply-banner"')
         ->assertSee('You have 1 new reply')
-        ->assertSeeHtml(route('project.artifact', [$project, $artifact]));
+        ->assertSeeHtml(route('project.artifact', [$project, $artifact]))
+        // The opt-in carries its own refusal, for a browser that turns the subscription down.
+        ->assertSeeHtml('data-test="banner-enable-push"')
+        ->assertSee('Not available in this browser');
 });
 
 it('shows nothing to an anonymous viewer', function () {

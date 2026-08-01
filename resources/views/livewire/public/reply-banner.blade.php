@@ -21,15 +21,22 @@
 
             {{-- Offer the away-from-page channel right where the reply signal lands. The
                  permission prompt only fires on this click, never on load (#35). --}}
+            {{-- A Client has no settings page to be sent to, so the button carries its own
+                 refusal: the browser turned the subscription down and saying so is the
+                 whole of what can be offered here. --}}
             <button
                 type="button"
-                x-data="{ on: false }"
+                x-data="{ on: false, failed: false }"
                 x-init="on = window.atelierPush?.isSubscribed?.() ?? false"
                 x-show="! on"
-                x-on:click="window.atelierPush?.enable('client').then(ok => on = ok)"
-                class="shrink-0 text-xs font-medium underline-offset-2 hover:underline"
+                x-on:click="(window.atelierPush?.enable('client') ?? Promise.resolve(null)).then(result => { on = result?.ok ?? false; failed = ! on })"
+                x-bind:disabled="failed"
+                class="shrink-0 text-xs font-medium underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
                 data-test="banner-enable-push"
-            >{{ __('Get notified') }}</button>
+            >
+                <span x-show="! failed">{{ __('Get notified') }}</span>
+                <span x-show="failed" x-cloak>{{ __('Not available in this browser') }}</span>
+            </button>
 
             <button
                 type="button"

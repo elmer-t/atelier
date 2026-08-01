@@ -7,10 +7,16 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ArtifactCommentPosted;
 use App\Notifications\ReplyOnYourThread;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
+use Minishlink\WebPush\MessageSentReport;
+use NotificationChannels\WebPush\Events\NotificationFailed;
 use NotificationChannels\WebPush\PushSubscription;
 use NotificationChannels\WebPush\WebPushChannel;
+use NotificationChannels\WebPush\WebPushMessage;
 
 beforeEach(function () {
     // These tests submit instantly; the timing floor is not what they are about.
@@ -141,7 +147,10 @@ it('offers the push opt-in to a Client right after they post a comment', functio
         ->call('postComment')
         ->assertHasNoErrors()
         ->assertSet('offerPush', true)
-        ->assertSeeHtml('data-test="post-comment-push-offer"');
+        ->assertSeeHtml('data-test="post-comment-push-offer"')
+        // A Client has no settings page to be sent to, so the offer states the refusal
+        // itself rather than folding away as though the ask had been honoured.
+        ->assertSee('This browser would not take notifications');
 });
 
 it('does not offer the Client push prompt to a Creator posting on the stage', function () {
@@ -201,4 +210,39 @@ it('drops a subscription through the unsubscribe endpoint', function () {
         ->assertOk();
 
     expect($creator->pushSubscriptions()->count())->toBe(0);
+});
+
+/**
+ * A push refused by the push service is the one failure the app cannot see: the channel
+ * raises an event and says nothing else, so an undelivered notification looks exactly
+ * like one that was never sent. The refusal now reaches the log.
+ */
+it('logs a push the push service turned down', function () {
+    Log::spy();
+
+    $creator = User::factory()->create();
+    $subscription = $creator->updatePushSubscription(
+        'https://updates.push.services.mozilla.com/wpush/v2/expired',
+        'p256dh-key',
+        'auth-token'
+    );
+
+    event(new NotificationFailed(
+        new MessageSentReport(
+            new Request('POST', $subscription->endpoint),
+            new Response(410),
+            false,
+            'Gone'
+        ),
+        $subscription,
+        new WebPushMessage
+    ));
+
+    Log::shouldHaveReceived('warning')
+        ->once()
+        ->withArgs(fn (string $message, array $context): bool => str_contains($message, 'rejected by the push service')
+            && $context['status'] === 410
+            && $context['expired'] === true
+            && $context['push_service'] === 'updates.push.services.mozilla.com'
+            && $context['subscribable_id'] === $creator->id);
 });

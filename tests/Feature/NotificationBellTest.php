@@ -102,6 +102,37 @@ it('lets a Creator follow a notification into a private project past the gate', 
         ->assertOk();
 });
 
+/**
+ * What is still to be read is set in bold; what has been read falls back to the regular
+ * weight, so the panel can be skimmed for what is new without reading a word of it.
+ */
+it('sets an unread row in bold and drops it to regular once read', function () {
+    ['creator' => $creator] = seedCreatorNotification();
+
+    $bell = Livewire::actingAs($creator)->test(NotificationBell::class)->call('open');
+
+    expect($bell->html())->toMatch('/data-test="notification-message"[^>]*font-semibold/');
+
+    $bell->call('markAllRead');
+
+    expect($bell->html())
+        ->toMatch('/data-test="notification-message"[^>]*font-normal/')
+        ->not->toMatch('/data-test="notification-message"[^>]*font-semibold/');
+});
+
+/**
+ * The bell has no room to explain a refused subscription, so it says that one happened
+ * and points at the settings page, which names the reason.
+ */
+it('admits a failed push opt-in and sends the Creator somewhere that explains it', function () {
+    $creator = User::factory()->create();
+
+    Livewire::actingAs($creator)->test(NotificationBell::class)
+        ->assertSeeHtml('data-test="bell-push-failed"')
+        ->assertSee('Could not turn notifications on.')
+        ->assertSee(route('notifications.edit'), escape: false);
+});
+
 it('is silent for a Creator with nothing to read', function () {
     $creator = User::factory()->create();
 

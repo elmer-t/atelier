@@ -23,6 +23,31 @@ function pushSupported() {
     return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
 
+/**
+ * What an opt-in attempt came to. `enable()` and `disable()` never reject and never
+ * answer with a bare boolean: a subscription can fail in half a dozen places — an
+ * insecure origin, a missing VAPID key, a refused permission, the browser's own push
+ * service — and a caller that only learns "false" can only leave the button sitting
+ * there. Each failure is named here so the UI can say which one happened.
+ *
+ * `reason` is one of:
+ *   unsupported  — no service worker or PushManager (an insecure origin, usually)
+ *   unconfigured — the page carries no VAPID public key
+ *   denied       — the browser refused, or the person did
+ *   no-worker    — the service worker would not register
+ *   push-service — the browser could not register the subscription with its push service
+ *   server       — the subscription was made but this app would not store it
+ *
+ * @typedef {{ok: boolean, reason: string|null, detail: string|null}} PushResult
+ *
+ * @param {string|null} reason
+ * @param {string|null} detail The browser's own words, where it offered any.
+ * @returns {PushResult}
+ */
+function outcome(reason = null, detail = null) {
+    return { ok: reason === null, reason, detail };
+}
+
 function metaContent(name) {
     return document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '';
 }
@@ -56,59 +81,81 @@ async function registerServiceWorker() {
 }
 
 async function postSubscription(url, body) {
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': metaContent('csrf-token'),
-            Accept: 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify(body),
-    });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': metaContent('csrf-token'),
+                Accept: 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(body),
+        });
 
-    return response.ok;
+        return response.ok;
+    } catch (error) {
+        return false;
+    }
 }
 
 /**
  * Turn browser notifications on for this device. Called from a user click, so this is
  * the one place a permission prompt is allowed to appear.
  *
+ * `pushManager.subscribe()` is a call into the browser's own push service, and it fails
+ * for reasons that have nothing to do with this app — a Chromium fork with Google's push
+ * service switched off answers with `AbortError: Registration failed`. That rejection is
+ * caught here rather than left to escape into the click handler, where it surfaced as a
+ * console trace and an unchanged button.
+ *
  * @param {'creator'|'client'} kind Which door to store the subscription behind.
- * @returns {Promise<boolean>} Whether a subscription was persisted.
+ * @returns {Promise<PushResult>}
  */
 async function enable(kind = 'creator') {
     if (!pushSupported()) {
-        return false;
+        return outcome('unsupported');
     }
 
     const vapidPublicKey = metaContent('vapid-public-key');
 
     if (!vapidPublicKey) {
-        return false;
+        return outcome('unconfigured');
     }
 
-    const permission = await Notification.requestPermission();
+    let permission;
+
+    try {
+        permission = await Notification.requestPermission();
+    } catch (error) {
+        return outcome('denied', error.message);
+    }
 
     if (permission !== 'granted') {
-        return false;
+        return outcome('denied');
     }
 
     const registration = (await navigator.serviceWorker.getRegistration('/')) || (await registerServiceWorker());
 
     if (!registration) {
-        return false;
+        return outcome('no-worker');
     }
 
     await navigator.serviceWorker.ready;
 
-    let subscription = await registration.pushManager.getSubscription();
+    let subscription;
 
-    if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-        });
+    try {
+        subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+            });
+        }
+    } catch (error) {
+        return outcome('push-service', error.message);
     }
 
     const endpoints = ENDPOINTS[kind] || ENDPOINTS.creator;
@@ -120,43 +167,51 @@ async function enable(kind = 'creator') {
         contentEncoding: (PushManager.supportedContentEncodings || ['aesgcm'])[0],
     });
 
-    if (stored) {
-        window.localStorage.setItem(PUSH_KIND_KEY, kind);
-        window.localStorage.setItem(SUBSCRIBED_KEY, '1');
+    if (!stored) {
+        return outcome('server');
     }
 
-    return stored;
+    window.localStorage.setItem(PUSH_KIND_KEY, kind);
+    window.localStorage.setItem(SUBSCRIBED_KEY, '1');
+
+    return outcome();
 }
 
 /**
  * Turn browser notifications off for this device, dropping the row server-side too.
+ * Off is the state the person asked for, so this reports success even where the
+ * browser end of the teardown fails: the device is unsubscribed locally either way.
  *
- * @returns {Promise<boolean>}
+ * @returns {Promise<PushResult>}
  */
 async function disable() {
     window.localStorage.removeItem(SUBSCRIBED_KEY);
 
     if (!('serviceWorker' in navigator)) {
-        return true;
+        return outcome();
     }
 
-    const registration = await navigator.serviceWorker.getRegistration('/');
-    const subscription = await registration?.pushManager.getSubscription();
+    try {
+        const registration = await navigator.serviceWorker.getRegistration('/');
+        const subscription = await registration?.pushManager.getSubscription();
 
-    if (!subscription) {
-        return true;
+        if (!subscription) {
+            return outcome();
+        }
+
+        const kind = window.localStorage.getItem(PUSH_KIND_KEY) || 'creator';
+        const endpoints = ENDPOINTS[kind] || ENDPOINTS.creator;
+        const endpoint = subscription.endpoint;
+
+        await subscription.unsubscribe();
+        await postSubscription(endpoints.unsubscribe, { endpoint });
+    } catch (error) {
+        return outcome();
     }
-
-    const kind = window.localStorage.getItem(PUSH_KIND_KEY) || 'creator';
-    const endpoints = ENDPOINTS[kind] || ENDPOINTS.creator;
-    const endpoint = subscription.endpoint;
-
-    await subscription.unsubscribe();
-    await postSubscription(endpoints.unsubscribe, { endpoint });
 
     window.localStorage.removeItem(PUSH_KIND_KEY);
 
-    return true;
+    return outcome();
 }
 
 /**

@@ -775,16 +775,21 @@
              permission request stays gated on the explicit click. --}}
         @if ($offerPush)
             <div
-                x-data="{ show: (window.atelierPush?.isSubscribed?.() ?? false) === false }"
+                x-data="{ show: (window.atelierPush?.isSubscribed?.() ?? false) === false, failed: false }"
                 x-show="show"
                 x-cloak
                 class="flex shrink-0 items-center gap-3 border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100"
                 data-test="post-comment-push-offer"
             >
-                <span class="flex-1">{{ __('Want a heads-up when someone replies? We can notify you in this browser.') }}</span>
+                {{-- The offer only closes on a subscription that actually took. A browser
+                     that refused leaves it standing, saying so, rather than quietly
+                     folding away as though the ask had been honoured. --}}
+                <span x-show="! failed" class="flex-1">{{ __('Want a heads-up when someone replies? We can notify you in this browser.') }}</span>
+                <span x-show="failed" x-cloak class="flex-1">{{ __('This browser would not take notifications, so we cannot let you know here.') }}</span>
                 <button
                     type="button"
-                    x-on:click="window.atelierPush?.enable('client').then(() => show = false)"
+                    x-show="! failed"
+                    x-on:click="(window.atelierPush?.enable('client') ?? Promise.resolve(null)).then(result => { if (result?.ok) { show = false } else { failed = true } })"
                     class="shrink-0 font-semibold underline-offset-2 hover:underline"
                     data-test="post-comment-enable-push"
                 >{{ __('Notify me') }}</button>
