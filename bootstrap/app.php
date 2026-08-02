@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureProjectAccessible;
 use App\Http\Middleware\EnsureUserIsCreator;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'project.accessible' => EnsureProjectAccessible::class,
             'creator' => EnsureUserIsCreator::class,
+        ]);
+
+        // Security headers (CSP, nosniff, framing) on every app-origin response.
+        $middleware->web(append: [
+            SecurityHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
