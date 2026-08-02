@@ -19,6 +19,9 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
+/**
+ * @property-read Collection<int, ArtifactRevision> $revisions
+ */
 class ArtifactsManager extends Component
 {
     use WithFileUploads;

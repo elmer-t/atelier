@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ProjectVisibility;
 use App\Enums\UserRole;
 use App\Models\Artifact;
 use App\Models\Comment;
@@ -25,7 +26,7 @@ class PrototypeCommentsSeeder extends Seeder
     public function run(): void
     {
         $project = Project::query()->where('title', 'Harbor District Masterplan')->first()
-            ?? Project::query()->public()->orderBy('id')->firstOrFail();
+            ?? Project::query()->where('visibility', ProjectVisibility::Public)->orderBy('id')->firstOrFail();
 
         $author = User::query()->where('role', UserRole::Creator)->first()
             ?? User::factory()->create(['role' => UserRole::Creator]);
@@ -114,7 +115,7 @@ class PrototypeCommentsSeeder extends Seeder
     }
 
     /**
-     * @return list<array{title: string, body: string, threads: list<array<string, mixed>>}>
+     * @return list<array{title: string, body: string, threads: list<array{quote: string, body: string, by: string, resolved?: bool, replies?: list<array{by: string, body: string}>}>}>
      */
     private function artifacts(): array
     {

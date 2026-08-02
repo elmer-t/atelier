@@ -18,6 +18,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * @property-read Collection<int, Artifact> $imageArtifacts
+ */
 #[Title('Manage project')]
 class Manage extends Component
 {

@@ -7,7 +7,6 @@ use App\Enums\ArtifactPlacement;
 use App\Enums\ArtifactType;
 use Database\Factories\ArtifactFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -99,12 +98,10 @@ class Artifact extends Model
     /**
      * The live markdown body, read through the current Revision so existing
      * render/edit call-sites keep reading `$artifact->body` unchanged (ADR-0005).
-     *
-     * @return Attribute<string|null, never>
      */
-    protected function body(): Attribute
+    public function getBodyAttribute(): ?string
     {
-        return Attribute::get(fn (): ?string => $this->currentRevision?->body);
+        return $this->currentRevision?->body;
     }
 
     public function isMarkdown(): bool
