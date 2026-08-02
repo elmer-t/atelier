@@ -46,7 +46,7 @@ class UpdateMarkdown extends AgentTool
         return Response::json([
             'artifact_id' => $artifact->id,
             'changed' => $revision !== null,
-            'revision_id' => $revision?->id ?? $artifact->current_revision_id,
+            'revision_id' => $revision->id ?? $artifact->current_revision_id,
         ]);
     }
 }

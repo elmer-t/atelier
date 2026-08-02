@@ -43,7 +43,7 @@ Route::prefix('p/{project:slug}')->group(function () {
     // Password gate — reachable without an established session (but not for archived projects).
     Route::get('unlock', [ProjectGateController::class, 'show'])->name('project.gate');
     Route::post('unlock', [ProjectGateController::class, 'unlock'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:project-unlock')
         ->name('project.unlock');
 
     // Gated content: archived => 404, private => requires session.

@@ -44,7 +44,7 @@ class CommentFactory extends Factory
     {
         return $this->state(fn () => [
             'resolved_at' => now(),
-            'resolved_by' => $by?->id ?? User::factory(),
+            'resolved_by' => $by->id ?? User::factory(),
         ]);
     }
 }

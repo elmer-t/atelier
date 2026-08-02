@@ -88,6 +88,35 @@ it('adds a download-only file when placement is set to download', function () {
     Storage::disk('local')->assertExists($artifact->stored_path);
 });
 
+it('rejects an HTML file upload that would run as script on the app origin', function () {
+    Storage::fake('local');
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startCreate', 'file')
+        ->set('artifactTitle', 'Sneaky')
+        ->set('file', UploadedFile::fake()->createWithContent('evil.html', '<script>alert(1)</script>'))
+        ->call('save')
+        ->assertHasErrors(['file']);
+
+    expect($this->project->artifacts()->count())->toBe(0);
+});
+
+it('rejects an SVG file upload (SVG can carry inline script)', function () {
+    Storage::fake('local');
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startCreate', 'file')
+        ->set('artifactTitle', 'Vector')
+        ->set('file', UploadedFile::fake()->createWithContent(
+            'logo.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+        ))
+        ->call('save')
+        ->assertHasErrors(['file']);
+
+    expect($this->project->artifacts()->count())->toBe(0);
+});
+
 it('reorders artifacts across types', function () {
     $a = $this->project->artifacts()->create(['title' => 'A', 'type' => 'markdown', 'sort_order' => 1]);
     $b = $this->project->artifacts()->create(['title' => 'B', 'type' => 'markdown', 'sort_order' => 2]);

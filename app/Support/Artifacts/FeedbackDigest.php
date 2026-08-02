@@ -40,26 +40,28 @@ class FeedbackDigest
      */
     private function unresolvedThreads(Project $project): array
     {
-        return Comment::query()
-            ->roots()
-            ->whereNull('resolved_at')
-            ->whereHas('artifact', fn ($query) => $query->where('project_id', $project->id))
-            ->with(['author', 'artifact', 'replies.author'])
-            ->orderBy('id')
-            ->get()
-            ->map(fn (Comment $thread): array => [
-                'thread_id' => $thread->id,
-                'artifact_id' => $thread->artifact_id,
-                'artifact_title' => $thread->artifact->title,
-                'author' => $thread->author->name,
-                'body' => $thread->body,
-                'anchor' => $thread->anchor,
-                'replies' => $thread->replies->map(fn (Comment $reply): array => [
-                    'author' => $reply->author->name,
-                    'body' => $reply->body,
-                ])->all(),
-            ])
-            ->all();
+        return array_values(
+            Comment::query()
+                ->roots()
+                ->whereNull('resolved_at')
+                ->whereHas('artifact', fn ($query) => $query->where('project_id', $project->id))
+                ->with(['author', 'artifact', 'replies.author'])
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Comment $thread): array => [
+                    'thread_id' => $thread->id,
+                    'artifact_id' => $thread->artifact_id,
+                    'artifact_title' => $thread->artifact->title,
+                    'author' => $thread->author->name,
+                    'body' => $thread->body,
+                    'anchor' => $thread->anchor,
+                    'replies' => $thread->replies->map(fn (Comment $reply): array => [
+                        'author' => $reply->author->name,
+                        'body' => $reply->body,
+                    ])->all(),
+                ])
+                ->all()
+        );
     }
 
     /**

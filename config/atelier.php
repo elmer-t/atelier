@@ -54,6 +54,25 @@ return [
             'ATELIER_PRIVACY_RETENTION',
             'for as long as the project is active; erased on request or when the project is deleted.',
         ),
+
+        /*
+        | Time-based retention window, in days, for the scheduled erasure of
+        | passwordless Client PII (name/email + comment bodies).
+        |
+        | The default is null: erasure is ON REQUEST ONLY (atelier:forget-client)
+        | plus removal when a project is deleted — matching the retention statement
+        | above, which is deletion/request-triggered, not time-based. This is the
+        | recorded decision; leave it null to keep that posture.
+        |
+        | Set a day count to also enforce retention on a schedule: the daily
+        | `atelier:prune-client-data` job then erases a Client once every project
+        | they have commented on is inactive (archived or past its expiry) AND their
+        | most recent comment is older than the window. A Client still active on any
+        | live project is never touched. Requires the scheduler (schedule:run cron).
+        */
+        'retention_days' => filled(env('ATELIER_PRIVACY_RETENTION_DAYS'))
+            ? (int) env('ATELIER_PRIVACY_RETENTION_DAYS')
+            : null,
     ],
 
     /*
@@ -81,6 +100,47 @@ return [
     | See docs/atelier.specs.md §10 (security checklist).
     |
     */
+
+    /*
+    |--------------------------------------------------------------------------
+    | File-artifact upload allowlist
+    |--------------------------------------------------------------------------
+    |
+    | `file`-type artifacts are streamed back inline on the app's own origin, so
+    | an uploaded document that the browser treats as HTML/SVG is stored XSS on
+    | that origin (ADR-0002 keeps executable HTML on the separate sandbox vhost
+    | for exactly this reason). We therefore allowlist both the client extension
+    | and the content-sniffed MIME type: neither `evil.html` nor a `.pdf` whose
+    | bytes are actually HTML gets through. Executable types (html, svg, xml, js)
+    | are deliberately absent. Kept alongside `X-Content-Type-Options: nosniff`
+    | on the stream and a sandboxed preview iframe (specs §6/§10).
+    |
+    */
+
+    'uploads' => [
+        'file_extensions' => [
+            'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp',
+            'txt', 'csv', 'md', 'rtf',
+            'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'odt', 'ods', 'odp', 'zip',
+        ],
+
+        'file_mimetypes' => [
+            'application/pdf',
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+            'text/plain', 'text/csv', 'text/markdown', 'text/rtf', 'application/rtf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'application/vnd.oasis.opendocument.presentation',
+            'application/zip',
+        ],
+    ],
 
     'comments' => [
         'max_body_length' => 5000,

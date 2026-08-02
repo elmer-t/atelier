@@ -39,14 +39,18 @@ class ArtifactFileController extends Controller
 
         abort_unless(filled($artifact->stored_path) && $disk->exists($artifact->stored_path), 404);
 
+        // Never let the browser second-guess the stored type and sniff a document
+        // into executable HTML/SVG on the app origin (ADR-0002 / specs §10).
+        $noSniff = ['X-Content-Type-Options' => 'nosniff'];
+
         if ($inline) {
             return $disk->response(
                 $artifact->stored_path,
                 $artifact->original_filename,
-                filled($artifact->mime_type) ? ['Content-Type' => $artifact->mime_type] : [],
+                $noSniff + (filled($artifact->mime_type) ? ['Content-Type' => $artifact->mime_type] : []),
             );
         }
 
-        return $disk->download($artifact->stored_path, $artifact->original_filename);
+        return $disk->download($artifact->stored_path, $artifact->original_filename, $noSniff);
     }
 }

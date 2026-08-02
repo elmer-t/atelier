@@ -67,7 +67,7 @@ class LineDiffer
      * @param  array<int, array<int, int>>  $lcs
      * @param  list<string>  $a
      * @param  list<string>  $b
-     * @param  list<array{type: string, value: string}>  $rows
+     * @param  list<array{type: 'added'|'removed'|'unchanged', value: string}>  $rows
      */
     private function walk(array $lcs, array $a, array $b, int $i, int $j, array &$rows): void
     {
@@ -79,9 +79,11 @@ class LineDiffer
             } elseif ($j > 0 && ($i === 0 || $lcs[$i][$j - 1] >= $lcs[$i - 1][$j])) {
                 $rows[] = ['type' => 'added', 'value' => $b[$j - 1]];
                 $j--;
-            } else {
+            } elseif ($i > 0) {
                 $rows[] = ['type' => 'removed', 'value' => $a[$i - 1]];
                 $i--;
+            } else {
+                break;
             }
         }
     }

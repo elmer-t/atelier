@@ -95,7 +95,7 @@ class ArtifactComments extends Component
     public function mount(): void
     {
         $this->identified = $this->currentCommenter() !== null;
-        $this->identityName = $this->currentCommenter()?->name ?? '';
+        $this->identityName = $this->currentCommenter()->name ?? '';
 
         if (! session()->has(self::OPENED_AT_KEY)) {
             session([self::OPENED_AT_KEY => now()->getTimestamp()]);

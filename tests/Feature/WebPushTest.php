@@ -1,5 +1,6 @@
 <?php
 
+use App\Listeners\LogFailedWebPush;
 use App\Livewire\Public\ArtifactComments;
 use App\Models\Artifact;
 use App\Models\Comment;
@@ -9,6 +10,7 @@ use App\Notifications\ArtifactCommentPosted;
 use App\Notifications\ReplyOnYourThread;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -210,6 +212,20 @@ it('drops a subscription through the unsubscribe endpoint', function () {
         ->assertOk();
 
     expect($creator->pushSubscriptions()->count())->toBe(0);
+});
+
+/**
+ * The whole point of LogFailedWebPush is that it is actually wired to the event —
+ * an unregistered listener would swallow every refusal in silence. This locks the
+ * wiring in place so a rename, a move, or a discovery toggle can't quietly undo it.
+ */
+it('wires LogFailedWebPush to the NotificationFailed event', function () {
+    expect(Event::hasListeners(NotificationFailed::class))->toBeTrue();
+
+    $handlers = collect(Event::getRawListeners()[NotificationFailed::class] ?? [])
+        ->map(fn ($listener): string => is_string($listener) ? $listener : '');
+
+    expect($handlers)->toContain(LogFailedWebPush::class.'@handle');
 });
 
 /**

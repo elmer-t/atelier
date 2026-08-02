@@ -8,6 +8,7 @@ use App\Enums\ProjectVisibility;
 use App\Models\Artifact;
 use App\Models\Project;
 use App\Services\LinkReissuer;
+use App\Support\PassphraseGenerator;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,6 +19,9 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
+/**
+ * @property-read Collection<int, Artifact> $imageArtifacts
+ */
 #[Title('Manage project')]
 class Manage extends Component
 {
@@ -117,7 +121,10 @@ class Manage extends Component
             'title' => ['required', 'string', 'max:255'],
             'visibility' => ['required', 'in:private,public'],
             'status' => ['required', 'in:active,archived'],
-            'newPassword' => ['nullable', 'string', 'min:4', 'max:255'],
+            // The gate password is the only wall around private content, so hold it to
+            // a real minimum. The passphrase generator beside the field produces values
+            // that clear this comfortably (#43).
+            'newPassword' => ['nullable', 'string', 'min:8', 'max:255'],
             'expiresAt' => ['nullable', 'date'],
             // Must be one of this project's own image artifacts.
             'headerArtifactId' => ['nullable', Rule::exists((new Artifact)->getTable(), 'id')->where(function ($query) {
@@ -125,6 +132,8 @@ class Manage extends Component
                     ->where('type', ArtifactType::File->value)
                     ->where('mime_type', 'like', 'image/%');
             })],
+        ], [
+            'newPassword.min' => __('Use at least :min characters. Tip: click “Generate” for a strong, easy-to-share passphrase.', ['min' => 8]),
         ]);
 
         $becomingPrivate = $validated['visibility'] === ProjectVisibility::Private->value;
@@ -160,6 +169,17 @@ class Manage extends Component
         $this->modal('project-settings')->close();
 
         Flux::toast(variant: 'success', text: __('Settings saved.'));
+    }
+
+    /**
+     * Fill the gate-password field with a memorable, sentence-style passphrase the
+     * Creator can read aloud to a Client. It always clears the raised minimum and goes
+     * through the same validation and hashing as a typed password on save (#43).
+     */
+    public function generatePassphrase(PassphraseGenerator $generator): void
+    {
+        $this->newPassword = $generator->generate();
+        $this->resetErrorBag('newPassword');
     }
 
     /**
