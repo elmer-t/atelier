@@ -30,6 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             SecurityHeaders::class,
         ]);
+
+        // Trusted proxies are read at request time from config('trustedproxy.proxies')
+        // by the framework's TrustProxies middleware (config/trustedproxy.php) — cannot
+        // be set here, as config() is not yet bound when this closure runs. Behind a
+        // CDN/LB this is what keeps request()->ip() (and every per-IP rate limit) honest
+        // rather than collapsing every visitor onto the proxy's address (#43).
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

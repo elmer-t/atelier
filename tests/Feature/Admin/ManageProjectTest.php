@@ -94,11 +94,43 @@ it('sets a password and verifies it', function () {
 
     Livewire::test(Manage::class, ['project' => $project])
         ->set('visibility', 'private')
-        ->set('newPassword', 'hunter2')
+        ->set('newPassword', 'hunter2-open')
         ->call('saveSettings')
         ->assertHasNoErrors();
 
-    expect($project->refresh()->checkPassword('hunter2'))->toBeTrue();
+    expect($project->refresh()->checkPassword('hunter2-open'))->toBeTrue();
+});
+
+it('rejects a gate password below the minimum length', function () {
+    $project = Project::factory()->public()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->set('visibility', 'private')
+        ->set('newPassword', 'short')
+        ->call('saveSettings')
+        ->assertHasErrors(['newPassword' => 'min']);
+
+    expect($project->refresh()->password_hash)->toBeNull();
+});
+
+it('generates a memorable passphrase that fills the field and clears the minimum', function () {
+    $project = Project::factory()->public()->create();
+
+    $component = Livewire::test(Manage::class, ['project' => $project])
+        ->call('generatePassphrase');
+
+    $passphrase = $component->get('newPassword');
+
+    // Sentence-style, hyphen-joined, and comfortably past the raised minimum.
+    expect($passphrase)->toMatch('/^[a-z]+(-[a-z]+){3,}$/')
+        ->and(strlen($passphrase))->toBeGreaterThanOrEqual(8);
+
+    // And it saves through the same validation/hashing path with no errors.
+    $component->set('visibility', 'private')
+        ->call('saveSettings')
+        ->assertHasNoErrors();
+
+    expect($project->refresh()->checkPassword($passphrase))->toBeTrue();
 });
 
 it('mounts the toggles from the project state', function () {

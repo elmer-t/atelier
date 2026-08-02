@@ -145,6 +145,14 @@
                         label="{{ $project->password_hash ? 'Rotate password' : 'Password' }}"
                         placeholder="{{ $project->password_hash ? '••••••••' : 'Required when private' }}"
                         description="{{ $project->password_hash ? 'Rotating signs out existing viewers.' : '' }}" />
+
+                    {{-- One click gives a strong, memorable passphrase a Creator can read
+                         aloud to a Client — no reused or short-but-annoying passwords (#43). --}}
+                    <flux:button type="button" variant="ghost" size="sm" icon="sparkles"
+                        wire:click="generatePassphrase" x-bind:disabled="$wire.isPublic"
+                        data-test="generate-passphrase" class="mt-2">
+                        Generate a passphrase
+                    </flux:button>
                 </div>
 
                 <flux:field>
