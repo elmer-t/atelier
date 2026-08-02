@@ -279,8 +279,20 @@ class ArtifactsManager extends Component
 
         $this->validate([
             'artifactTitle' => ['required', 'string', 'max:255'],
-            'file' => [$creating ? 'required' : 'nullable', 'file', 'max:102400'],
+            'file' => [
+                $creating ? 'required' : 'nullable',
+                'file',
+                'max:102400',
+                // Allowlist the extension and the content-sniffed type so a file that
+                // the browser would run as HTML/SVG on the app origin never lands here
+                // (ADR-0002 / specs §10). Executable types are deliberately excluded.
+                'extensions:'.implode(',', config('atelier.uploads.file_extensions')),
+                'mimetypes:'.implode(',', config('atelier.uploads.file_mimetypes')),
+            ],
             'placement' => ['required', 'in:stage,download'],
+        ], [
+            'file.extensions' => __('That file type is not allowed. Upload a document or image (e.g. PDF, image, or Office file).'),
+            'file.mimetypes' => __('That file type is not allowed. Upload a document or image (e.g. PDF, image, or Office file).'),
         ]);
 
         $artifact = $this->editingArtifactId

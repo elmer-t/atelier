@@ -40,6 +40,21 @@ it('shows staged files in the sidebar and download-only files in the downloads l
     $response->assertDontSee('>Artifacts Zip<', escape: false);
 });
 
+it('renders a staged non-image file in a sandboxed iframe', function () {
+    $project = Project::factory()->public()->create();
+    $pdf = Artifact::factory()->for($project)->file(ArtifactPlacement::Stage)->create([
+        'title' => 'Brief',
+        'mime_type' => 'application/pdf',
+        'original_filename' => 'brief.pdf',
+    ]);
+
+    $response = $this->get(route('project.artifact', [$project, $pdf]))->assertOk();
+
+    // The preview iframe must be sandboxed so anything the browser would run stays
+    // trapped in an opaque origin, never the app origin (ADR-0002 / specs §10).
+    expect($response->getContent())->toMatch('/<iframe\b[^>]*\bsandbox\b/');
+});
+
 it('404s the stage route for a download-only file', function () {
     $project = Project::factory()->public()->create();
     $download = Artifact::factory()->for($project)->download()->create();

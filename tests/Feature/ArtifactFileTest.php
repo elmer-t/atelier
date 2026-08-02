@@ -45,6 +45,24 @@ it('streams a staged file artifact inline', function () {
     expect($response->headers->get('content-disposition'))->toStartWith('inline');
 });
 
+it('sends nosniff so an inline file cannot be sniffed into executable HTML', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = storeFileArtifact($project, ArtifactPlacement::Stage);
+
+    $this->get(route('project.artifact.file', [$project, $artifact]))
+        ->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+});
+
+it('sends nosniff on the forced download too', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = storeFileArtifact($project);
+
+    $this->get(route('project.artifact.download', [$project, $artifact]))
+        ->assertOk()
+        ->assertHeader('X-Content-Type-Options', 'nosniff');
+});
+
 it('gates file downloads for a private project', function () {
     $project = Project::factory()->private('secret')->create();
     $artifact = storeFileArtifact($project);

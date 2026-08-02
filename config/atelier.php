@@ -82,6 +82,47 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | File-artifact upload allowlist
+    |--------------------------------------------------------------------------
+    |
+    | `file`-type artifacts are streamed back inline on the app's own origin, so
+    | an uploaded document that the browser treats as HTML/SVG is stored XSS on
+    | that origin (ADR-0002 keeps executable HTML on the separate sandbox vhost
+    | for exactly this reason). We therefore allowlist both the client extension
+    | and the content-sniffed MIME type: neither `evil.html` nor a `.pdf` whose
+    | bytes are actually HTML gets through. Executable types (html, svg, xml, js)
+    | are deliberately absent. Kept alongside `X-Content-Type-Options: nosniff`
+    | on the stream and a sandboxed preview iframe (specs §6/§10).
+    |
+    */
+
+    'uploads' => [
+        'file_extensions' => [
+            'pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp',
+            'txt', 'csv', 'md', 'rtf',
+            'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+            'odt', 'ods', 'odp', 'zip',
+        ],
+
+        'file_mimetypes' => [
+            'application/pdf',
+            'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+            'text/plain', 'text/csv', 'text/markdown', 'text/rtf', 'application/rtf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'application/vnd.oasis.opendocument.presentation',
+            'application/zip',
+        ],
+    ],
+
     'comments' => [
         'max_body_length' => 5000,
 

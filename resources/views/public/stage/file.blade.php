@@ -18,11 +18,15 @@
             <img src="{{ $fileUrl }}" alt="{{ $current->title }}" class="max-h-full max-w-full object-contain" />
         </div>
     @else
-        {{-- Browser renders inline (PDF, some office docs) or falls back to downloading. --}}
+        {{-- Browser renders inline (PDF, some office docs) or falls back to downloading.
+             Sandboxed with no allow-* tokens: the frame gets an opaque origin and no
+             script execution, so anything that slipped past the upload allowlist still
+             cannot run on the app origin (ADR-0002 / specs §10). --}}
         <iframe
             src="{{ $fileUrl }}"
             title="{{ $current->title }}"
             class="w-full flex-1 border-0 bg-white"
+            sandbox
             referrerpolicy="no-referrer"></iframe>
     @endif
 </div>
