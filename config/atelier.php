@@ -54,6 +54,25 @@ return [
             'ATELIER_PRIVACY_RETENTION',
             'for as long as the project is active; erased on request or when the project is deleted.',
         ),
+
+        /*
+        | Time-based retention window, in days, for the scheduled erasure of
+        | passwordless Client PII (name/email + comment bodies).
+        |
+        | The default is null: erasure is ON REQUEST ONLY (atelier:forget-client)
+        | plus removal when a project is deleted — matching the retention statement
+        | above, which is deletion/request-triggered, not time-based. This is the
+        | recorded decision; leave it null to keep that posture.
+        |
+        | Set a day count to also enforce retention on a schedule: the daily
+        | `atelier:prune-client-data` job then erases a Client once every project
+        | they have commented on is inactive (archived or past its expiry) AND their
+        | most recent comment is older than the window. A Client still active on any
+        | live project is never touched. Requires the scheduler (schedule:run cron).
+        */
+        'retention_days' => filled(env('ATELIER_PRIVACY_RETENTION_DAYS'))
+            ? (int) env('ATELIER_PRIVACY_RETENTION_DAYS')
+            : null,
     ],
 
     /*

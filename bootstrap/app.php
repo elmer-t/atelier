@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureProjectAccessible;
 use App\Http\Middleware\EnsureUserIsCreator;
 use App\Http\Middleware\SecurityHeaders;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule): void {
+        // Enforce time-based client-data retention (no-op unless a retention window
+        // is configured; see config/atelier.php). Requires the schedule:run cron.
+        $schedule->command('atelier:prune-client-data')->daily();
+    })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'project.accessible' => EnsureProjectAccessible::class,

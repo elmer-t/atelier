@@ -5,6 +5,7 @@ namespace App\Notifications;
 use App\Models\Comment;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage;
@@ -19,8 +20,11 @@ use NotificationChannels\WebPush\WebPushMessage;
  * it. A `mail` channel can join under #21 once the email reply-loop is built; the
  * replier themselves is never told, and a Thread author who has subscribed no device
  * is sent nothing at all.
+ *
+ * Queued so the outbound web-push call never blocks or fails the reply POST that
+ * triggered it. Needs a running queue worker (see the deployment README).
  */
-class ReplyOnYourThread extends Notification
+class ReplyOnYourThread extends Notification implements ShouldQueue
 {
     use Queueable;
 

@@ -6,6 +6,7 @@ use App\Models\Comment;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
@@ -16,8 +17,12 @@ use NotificationChannels\WebPush\WebPushMessage;
  * of its artifacts (ADR-0003). Client reply-notifications are deferred until a
  * Client verifies their address via the upgrade path, so only Creators are
  * notified today.
+ *
+ * Queued so the outbound web-push and mail calls happen out of band: a slow or
+ * failing push endpoint must never add latency to — or fail — the comment POST
+ * that triggered it. Needs a running queue worker (see the deployment README).
  */
-class ArtifactCommentPosted extends Notification
+class ArtifactCommentPosted extends Notification implements ShouldQueue
 {
     use Queueable;
 
