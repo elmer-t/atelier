@@ -36,6 +36,13 @@ class Manage extends Component
     public string $newPassword = '';
 
     /**
+     * Whether the gate-password field renders its value in the clear. Masked by
+     * default; generating a passphrase flips it on, since a passphrase the Creator
+     * cannot read is a passphrase they cannot pass on (#43).
+     */
+    public bool $revealPassword = false;
+
+    /**
      * Optional link expiry, as a `datetime-local` string (empty = never expires).
      */
     public string $expiresAt = '';
@@ -163,7 +170,7 @@ class Manage extends Component
             }
         }
 
-        $this->reset('newPassword');
+        $this->reset('newPassword', 'revealPassword');
         $this->project->refresh();
 
         $this->modal('project-settings')->close();
@@ -175,10 +182,14 @@ class Manage extends Component
      * Fill the gate-password field with a memorable, sentence-style passphrase the
      * Creator can read aloud to a Client. It always clears the raised minimum and goes
      * through the same validation and hashing as a typed password on save (#43).
+     *
+     * Generating also unmasks the field: the Creator has to be able to read what they
+     * just generated, and unlike a typed password nobody else knows it yet.
      */
     public function generatePassphrase(PassphraseGenerator $generator): void
     {
         $this->newPassword = $generator->generate();
+        $this->revealPassword = true;
         $this->resetErrorBag('newPassword');
     }
 

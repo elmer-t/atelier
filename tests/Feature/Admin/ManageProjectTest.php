@@ -133,6 +133,45 @@ it('generates a memorable passphrase that fills the field and clears the minimum
     expect($project->refresh()->checkPassword($passphrase))->toBeTrue();
 });
 
+it('unmasks the password field so the generated passphrase is readable', function () {
+    $project = Project::factory()->public()->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        // Masked until there is something worth reading.
+        ->assertSet('revealPassword', false)
+        ->assertSee('type="password"', escape: false)
+        ->call('generatePassphrase')
+        // The generated words render in the clear, not behind a masked input —
+        // otherwise the Creator cannot relay what they just generated (#43).
+        ->assertSet('revealPassword', true)
+        ->assertSee('type="text"', escape: false)
+        ->assertDontSee('type="password"', escape: false);
+});
+
+it('toggles the password field between masked and readable', function () {
+    $project = Project::factory()->private('secret')->create();
+
+    // The button drives this through `$toggle`, which Livewire resolves client-side.
+    Livewire::test(Manage::class, ['project' => $project])
+        ->assertSeeHtml('wire:click="$toggle(\'revealPassword\')"')
+        ->assertSee('Show')
+        ->set('revealPassword', true)
+        ->assertSee('type="text"', escape: false)
+        ->assertSee('Hide');
+});
+
+it('remasks the password field once the settings are saved', function () {
+    $project = Project::factory()->private('secret')->create();
+
+    Livewire::test(Manage::class, ['project' => $project])
+        ->call('generatePassphrase')
+        ->assertSet('revealPassword', true)
+        ->call('saveSettings')
+        ->assertHasNoErrors()
+        ->assertSet('newPassword', '')
+        ->assertSet('revealPassword', false);
+});
+
 it('mounts the toggles from the project state', function () {
     $project = Project::factory()->public()->create(['status' => 'archived']);
 

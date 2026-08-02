@@ -141,18 +141,29 @@
 
                 {{-- Stays in the layout when public so toggling never reflows the form. --}}
                 <div x-bind:class="$wire.isPublic && 'opacity-50'" class="transition-opacity">
-                    <flux:input type="password" wire:model="newPassword" x-bind:disabled="$wire.isPublic"
+                    <flux:input :type="$revealPassword ? 'text' : 'password'" wire:model="newPassword"
+                        x-bind:disabled="$wire.isPublic" copyable
                         label="{{ $project->password_hash ? 'Rotate password' : 'Password' }}"
                         placeholder="{{ $project->password_hash ? '••••••••' : 'Required when private' }}"
                         description="{{ $project->password_hash ? 'Rotating signs out existing viewers.' : '' }}" />
 
                     {{-- One click gives a strong, memorable passphrase a Creator can read
-                         aloud to a Client — no reused or short-but-annoying passwords (#43). --}}
-                    <flux:button type="button" variant="ghost" size="sm" icon="sparkles"
-                        wire:click="generatePassphrase" x-bind:disabled="$wire.isPublic"
-                        data-test="generate-passphrase" class="mt-2">
-                        Generate a passphrase
-                    </flux:button>
+                         aloud to a Client — no reused or short-but-annoying passwords (#43).
+                         Generating unmasks the field so the value is actually readable. --}}
+                    <div class="mt-2 flex flex-wrap items-center gap-1">
+                        <flux:button type="button" variant="ghost" size="sm" icon="sparkles"
+                            wire:click="generatePassphrase" x-bind:disabled="$wire.isPublic"
+                            data-test="generate-passphrase">
+                            Generate a passphrase
+                        </flux:button>
+
+                        <flux:button type="button" variant="ghost" size="sm"
+                            :icon="$revealPassword ? 'eye-slash' : 'eye'"
+                            wire:click="$toggle('revealPassword')" x-bind:disabled="$wire.isPublic"
+                            data-test="toggle-password-visibility">
+                            {{ $revealPassword ? 'Hide' : 'Show' }}
+                        </flux:button>
+                    </div>
                 </div>
 
                 <flux:field>
