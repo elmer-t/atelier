@@ -43,7 +43,8 @@ it('adds an html artifact from an uploaded zip', function () {
         ->set('artifactTitle', 'Homepage Mockup')
         ->set('zipFile', $upload)
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true);
 
     $artifact = $this->project->artifacts()->first();
     expect($artifact->isHtml())->toBeTrue()
@@ -78,7 +79,8 @@ it('adds a download-only file when placement is set to download', function () {
         ->set('file', UploadedFile::fake()->create('spec.pdf', 20, 'application/pdf'))
         ->set('placement', ArtifactPlacement::Download->value)
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true);
 
     $artifact = $this->project->artifacts()->first();
     expect($artifact->isDownload())->toBeTrue()
@@ -115,6 +117,109 @@ it('rejects an SVG file upload (SVG can carry inline script)', function () {
         ->assertHasErrors(['file']);
 
     expect($this->project->artifacts()->count())->toBe(0);
+});
+
+it('keeps the artifact open after saving, so several edits fit in one sitting', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true)
+        ->assertSet('editingArtifactId', $artifact->id)
+        ->assertSet('body', '# Two')
+        // A second edit in the same sitting appends to the same artifact.
+        ->set('body', '# Three')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($this->project->artifacts()->count())->toBe(1)
+        ->and($artifact->refresh()->revisions()->count())->toBe(3)
+        ->and($artifact->body)->toBe('# Three');
+});
+
+it('switches to editing an artifact it just created, rather than creating a second', function () {
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startCreate', 'markdown')
+        ->set('artifactTitle', 'Brief')
+        ->set('body', '# One')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->tap(fn ($component) => expect($component->get('editingArtifactId'))
+            ->toBe($this->project->artifacts()->firstOrFail()->id))
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($this->project->artifacts()->count())->toBe(1)
+        ->and($this->project->artifacts()->firstOrFail()->revisions()->count())->toBe(2);
+});
+
+it('closes the artifact only when Close is used', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertSet('showForm', true)
+        ->call('resetForm')
+        ->assertSet('showForm', false)
+        ->assertSet('editingArtifactId', null);
+});
+
+it('guards every control that would throw an unsaved draft away', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    $html = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->html();
+
+    preg_match_all('/<button[^>]*data-unsaved-guard[^>]*>/', $html, $matches);
+    $guarded = collect($matches[0]);
+
+    // The name and the pencil both reopen an artifact; Close leaves this one.
+    // Move, delete and Save keep the draft, so they are deliberately unguarded.
+    expect($guarded)->toHaveCount(3)
+        ->and($guarded->filter(fn (string $tag) => str_contains($tag, 'startEdit('.$artifact->id.')')))->toHaveCount(2)
+        ->and($guarded->filter(fn (string $tag) => str_contains($tag, 'resetForm')))->toHaveCount(1);
+});
+
+it('tells the browser the draft is safe whenever the form settles', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertDispatched('artifact-form-settled')
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertDispatched('artifact-form-settled')
+        ->call('resetForm')
+        ->assertDispatched('artifact-form-settled');
+});
+
+it('tells the browser the draft is safe after a restore rewrites the editor', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('restoreRevision', $first)
+        ->assertDispatched('artifact-form-settled')
+        ->assertSet('body', '# One');
+});
+
+it('opens the editor from the artifact name as well as the edit icon', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create(['title' => 'Design Brief']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->assertSeeHtml('data-test="open-artifact-'.$artifact->id.'"')
+        ->call('startEdit', $artifact->id)
+        ->assertSet('showForm', true)
+        ->assertSet('artifactTitle', 'Design Brief');
 });
 
 it('reorders artifacts across types', function () {
@@ -229,39 +334,165 @@ it('restores an older Revision by appending a copy-forward, deleting nothing', f
         ->and($artifact->revisions()->whereKey($firstRevisionId)->exists())->toBeTrue();
 });
 
-it('produces a line diff between two Revisions', function () {
-    $artifact = Artifact::factory()->for($this->project)->markdown("line a\nline b")->create();
-    $first = $artifact->revisions()->firstOrFail()->id;
+/**
+ * Edit a markdown artifact once per body given, so a test has a Revision history
+ * to pick from. Returns the Revision ids, oldest first.
+ *
+ * @param  list<string>  $bodies
+ * @return list<int>
+ */
+function revisionsFor(Artifact $artifact, array $bodies): array
+{
+    $component = Livewire::test(ArtifactsManager::class, ['project' => $artifact->project]);
 
-    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
-        ->call('startEdit', $artifact->id)
-        ->set('body', "line a\nline c")->call('save')
-        ->call('startEdit', $artifact->id)
-        ->tap(function ($c) use ($artifact, $first) {
-            $latest = $artifact->fresh()->currentRevision->id;
-            $c->set('diffFromId', $first)->set('diffToId', $latest)
-                ->assertSee('- line b')
-                ->assertSee('+ line c');
-        });
-});
+    foreach ($bodies as $body) {
+        $component->call('startEdit', $artifact->id)->set('body', $body)->call('save');
+    }
+
+    return $artifact->refresh()->revisions()->orderBy('id')->pluck('id')->all();
+}
 
 it('opens a past Revision to read its full content without changing the document', function () {
     $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
-    $firstRevisionId = $artifact->revisions()->firstOrFail()->id;
+    [$first] = revisionsFor($artifact, ['# Two']);
 
     $component = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
         ->call('startEdit', $artifact->id)
-        ->set('body', '# Two')->call('save')
-        ->call('startEdit', $artifact->id)
-        ->call('viewRevision', $firstRevisionId);
+        ->call('pickRevision', $first);
 
     expect($component->instance()->viewedRevision->body)->toBe('# One');
     $component->assertSee('# One');
 
-    // Viewing changed nothing: still two Revisions and the latest is current.
+    // Reading changed nothing: still two Revisions and the latest is current.
     expect($artifact->refresh()->revisions()->count())->toBe(2)
         ->and($artifact->body)->toBe('# Two');
 
-    $component->call('stopViewingRevision');
+    $component->call('clearRevisionSelection');
     expect($component->instance()->viewedRevision)->toBeNull();
+});
+
+it('compares two picked Revisions, showing what each line became', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown("line a\nline b")->create();
+    [$first, $second] = revisionsFor($artifact, ["line a\nline c"]);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('pickRevision', $second)
+        ->assertSee('line b')
+        ->assertSee('line c')
+        ->assertSet('compareFromId', $first)
+        ->assertSet('compareToId', $second);
+});
+
+it('orders a picked pair oldest first however they were clicked', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first, $second] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $second)
+        ->call('pickRevision', $first)
+        ->assertSet('compareFromId', $first)
+        ->assertSet('compareToId', $second);
+});
+
+it('puts a Revision back down when the one being read is picked again', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('pickRevision', $first)
+        ->assertSet('compareFromId', null)
+        ->assertSet('compareToId', null);
+});
+
+it('starts a new selection when a third Revision is picked', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first, $second, $third] = revisionsFor($artifact, ['# Two', '# Three']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('pickRevision', $second)
+        ->call('pickRevision', $third)
+        ->assertSet('compareFromId', $third)
+        ->assertSet('compareToId', null);
+});
+
+it('counts the lines a comparison added and removed', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown("keep\ndrop")->create();
+    [$first, $second] = revisionsFor($artifact, ["keep\nadd\nmore"]);
+
+    $component = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('pickRevision', $second);
+
+    expect($component->instance()->comparison)
+        ->toMatchArray(['added' => 2, 'removed' => 1]);
+});
+
+it('hides the editor while the history panel is open and hands it back on close', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertSeeHtml('wire:model="body"')
+        ->call('pickRevision', $first)
+        ->assertDontSeeHtml('wire:model="body"')
+        ->call('clearRevisionSelection')
+        ->assertSeeHtml('wire:model="body"');
+});
+
+it('keeps the unsaved draft body while a Revision is open', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Draft in progress')
+        ->call('pickRevision', $first)
+        ->call('clearRevisionSelection')
+        ->assertSet('body', '# Draft in progress');
+});
+
+it('says when each Revision was saved and who saved it', function () {
+    $agent = User::factory()->create(['name' => 'Atelier Agent']);
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    $revision = $artifact->revisions()->firstOrFail();
+    $revision->forceFill(['user_id' => $agent->id, 'created_at' => now()->subDays(3)])->save();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertSee('Atelier Agent')
+        ->assertSee($revision->refresh()->created_at->format('M j, H:i'));
+});
+
+it('numbers Revisions from one, oldest first', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first, $second, $third] = revisionsFor($artifact, ['# Two', '# Three']);
+
+    $component = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id);
+
+    expect($component->instance()->revisionOrdinals)
+        ->toBe([$third => 3, $second => 2, $first => 1]);
+});
+
+it('closes the history panel after restoring, so the editor shows the restored body', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('restoreRevision', $first)
+        ->assertSet('compareFromId', null)
+        ->assertSet('compareToId', null)
+        ->assertSet('body', '# One');
 });

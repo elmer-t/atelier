@@ -48,6 +48,13 @@ php artisan db:seed --class=PrototypeCommentsSeeder
 composer ci:check   # Pint (style) + PHPStan (level 7) + Pest
 ```
 
+`tests/Browser` drives a real Chromium through Playwright. `composer setup`
+installs the npm package; the browser binary is a separate one-off download:
+
+```bash
+npx playwright install chromium
+```
+
 CI runs this on every push to `main` and every pull request
 (`.github/workflows/tests.yml`). Keep it green.
 

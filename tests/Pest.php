@@ -28,7 +28,7 @@ pest()->extend(TestCase::class)
             File::deleteDirectory($path);
         }
     })
-    ->in('Feature', 'Unit');
+    ->in('Feature', 'Unit', 'Browser');
 
 /*
 |--------------------------------------------------------------------------
