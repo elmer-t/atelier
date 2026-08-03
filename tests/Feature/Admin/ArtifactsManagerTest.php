@@ -43,7 +43,8 @@ it('adds an html artifact from an uploaded zip', function () {
         ->set('artifactTitle', 'Homepage Mockup')
         ->set('zipFile', $upload)
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true);
 
     $artifact = $this->project->artifacts()->first();
     expect($artifact->isHtml())->toBeTrue()
@@ -78,7 +79,8 @@ it('adds a download-only file when placement is set to download', function () {
         ->set('file', UploadedFile::fake()->create('spec.pdf', 20, 'application/pdf'))
         ->set('placement', ArtifactPlacement::Download->value)
         ->call('save')
-        ->assertHasNoErrors();
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true);
 
     $artifact = $this->project->artifacts()->first();
     expect($artifact->isDownload())->toBeTrue()
@@ -115,6 +117,67 @@ it('rejects an SVG file upload (SVG can carry inline script)', function () {
         ->assertHasErrors(['file']);
 
     expect($this->project->artifacts()->count())->toBe(0);
+});
+
+it('keeps the artifact open after saving, so several edits fit in one sitting', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSet('showForm', true)
+        ->assertSet('editingArtifactId', $artifact->id)
+        ->assertSet('body', '# Two')
+        // A second edit in the same sitting appends to the same artifact.
+        ->set('body', '# Three')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($this->project->artifacts()->count())->toBe(1)
+        ->and($artifact->refresh()->revisions()->count())->toBe(3)
+        ->and($artifact->body)->toBe('# Three');
+});
+
+it('switches to editing an artifact it just created, rather than creating a second', function () {
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startCreate', 'markdown')
+        ->set('artifactTitle', 'Brief')
+        ->set('body', '# One')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->tap(fn ($component) => expect($component->get('editingArtifactId'))
+            ->toBe($this->project->artifacts()->firstOrFail()->id))
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($this->project->artifacts()->count())->toBe(1)
+        ->and($this->project->artifacts()->firstOrFail()->revisions()->count())->toBe(2);
+});
+
+it('closes the artifact only when Close is used', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertSet('showForm', true)
+        ->call('resetForm')
+        ->assertSet('showForm', false)
+        ->assertSet('editingArtifactId', null);
+});
+
+it('opens the editor from the artifact name as well as the edit icon', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create(['title' => 'Design Brief']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->assertSeeHtml('data-test="open-artifact-'.$artifact->id.'"')
+        ->call('startEdit', $artifact->id)
+        ->assertSet('showForm', true)
+        ->assertSet('artifactTitle', 'Design Brief');
 });
 
 it('reorders artifacts across types', function () {

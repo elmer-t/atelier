@@ -24,7 +24,9 @@
                         {{ $artifact->type->label() }}
                     </flux:badge>
                     <div class="flex-1 truncate">
-                        <span class="truncate text-sm">{{ $artifact->title }}</span>
+                        <button type="button" wire:click="startEdit({{ $artifact->id }})"
+                            data-test="open-artifact-{{ $artifact->id }}"
+                            class="max-w-full truncate text-sm hover:underline">{{ $artifact->title }}</button>
                         @if ($artifact->isFile())
                             <span class="ml-1 text-xs text-zinc-400">
                                 · {{ $artifact->isDownload() ? 'download' : 'in stage' }}
@@ -119,9 +121,10 @@
                                             Restore Revision {{ $ordinals[$from->id] }}
                                         </flux:button>
                                     @endif
-                                    <flux:button size="xs" variant="ghost" icon="x-mark" type="button"
+                                    {{-- Not "Close": that word belongs to leaving the artifact. --}}
+                                    <flux:button size="xs" variant="ghost" icon="pencil-square" type="button"
                                         data-test="close-revision-panel" wire:click="clearRevisionSelection">
-                                        Close
+                                        Back to editing
                                     </flux:button>
                                 </div>
                             </div>
@@ -270,7 +273,8 @@
                 @endif
 
                 <div class="flex justify-end gap-2">
-                    <flux:button variant="ghost" wire:click="resetForm" type="button">Cancel</flux:button>
+                    {{-- Saving keeps the artifact open; this is the only way out of it. --}}
+                    <flux:button variant="ghost" wire:click="resetForm" type="button" data-test="close-artifact">Close</flux:button>
                     <flux:button type="submit" variant="primary">Save</flux:button>
                 </div>
             </form>

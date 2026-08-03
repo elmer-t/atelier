@@ -251,10 +251,13 @@ class ArtifactsManager extends Component
 
             $writer->update($artifact, $body, auth()->user());
         } else {
-            $writer->create($this->project, $this->artifactTitle, $body, auth()->user(), $this->nextSortOrder());
+            $artifact = $writer->create($this->project, $this->artifactTitle, $body, auth()->user(), $this->nextSortOrder());
         }
 
-        $this->finish(__('Markdown page saved.'));
+        // An uploaded .md file put its content past the textarea, so show what was saved.
+        $this->body = $body;
+
+        $this->finish($artifact, __('Markdown page saved.'));
     }
 
     /**
@@ -352,7 +355,7 @@ class ArtifactsManager extends Component
             $artifact->update($result);
         }
 
-        $this->finish(__('HTML page saved.'));
+        $this->finish($artifact, __('HTML page saved.'));
     }
 
     protected function saveFile(): void
@@ -420,7 +423,7 @@ class ArtifactsManager extends Component
 
         $artifact->save();
 
-        $this->finish(__('File saved.'));
+        $this->finish($artifact, __('File saved.'));
     }
 
     public function uploadImage(): void
@@ -493,13 +496,31 @@ class ArtifactsManager extends Component
         return (int) $this->project->artifacts()->max('sort_order') + 1;
     }
 
-    protected function finish(string $message): void
+    /**
+     * Settle the form after a successful save. The Artifact stays open so several
+     * edits can be made in one sitting — only Close leaves it — and a save that
+     * created the Artifact switches the form to editing it, so the next save
+     * appends to it rather than making a second one.
+     */
+    protected function finish(Artifact $artifact, string $message): void
     {
-        $this->resetForm();
-        unset($this->artifacts);
+        $this->editingArtifactId = $artifact->id;
+
+        // Uploads are consumed by the save; leaving them set would re-apply the
+        // same file on the next one.
+        $this->reset(['mdFile', 'zipFile', 'image', 'file']);
+        $this->resetErrorBag();
+
+        // The history gained a Revision and the list may have gained a row.
+        unset($this->artifacts, $this->revisions, $this->revisionOrdinals);
+        $this->forgetComparison();
+
         Flux::toast(variant: 'success', text: $message);
     }
 
+    /**
+     * Close the form, discarding anything unsaved in it.
+     */
     public function resetForm(): void
     {
         $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'compareFromId', 'compareToId']);
