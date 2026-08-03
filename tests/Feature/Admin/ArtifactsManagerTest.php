@@ -170,6 +170,48 @@ it('closes the artifact only when Close is used', function () {
         ->assertSet('editingArtifactId', null);
 });
 
+it('guards every control that would throw an unsaved draft away', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    $html = Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->html();
+
+    preg_match_all('/<button[^>]*data-unsaved-guard[^>]*>/', $html, $matches);
+    $guarded = collect($matches[0]);
+
+    // The name and the pencil both reopen an artifact; Close leaves this one.
+    // Move, delete and Save keep the draft, so they are deliberately unguarded.
+    expect($guarded)->toHaveCount(3)
+        ->and($guarded->filter(fn (string $tag) => str_contains($tag, 'startEdit('.$artifact->id.')')))->toHaveCount(2)
+        ->and($guarded->filter(fn (string $tag) => str_contains($tag, 'resetForm')))->toHaveCount(1);
+});
+
+it('tells the browser the draft is safe whenever the form settles', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertDispatched('artifact-form-settled')
+        ->set('body', '# Two')
+        ->call('save')
+        ->assertDispatched('artifact-form-settled')
+        ->call('resetForm')
+        ->assertDispatched('artifact-form-settled');
+});
+
+it('tells the browser the draft is safe after a restore rewrites the editor', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('restoreRevision', $first)
+        ->assertDispatched('artifact-form-settled')
+        ->assertSet('body', '# One');
+});
+
 it('opens the editor from the artifact name as well as the edit icon', function () {
     $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create(['title' => 'Design Brief']);
 

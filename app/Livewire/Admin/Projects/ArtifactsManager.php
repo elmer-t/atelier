@@ -209,6 +209,17 @@ class ArtifactsManager extends Component
     }
 
     /**
+     * Tell the browser the form now matches what is stored, so the unsaved-work
+     * guard stands down. Announced whenever the server settles the form — opened,
+     * saved, or closed — because the body is bound deferred and only the browser
+     * can see an edit before it is sent.
+     */
+    protected function announceFormSettled(): void
+    {
+        $this->dispatch('artifact-form-settled');
+    }
+
+    /**
      * Default a newly chosen file's placement from its MIME type. The operator
      * can still override the toggle afterwards.
      */
@@ -305,9 +316,11 @@ class ArtifactsManager extends Component
 
         $writer->restore($artifact, $revision, auth()->user());
 
+        // The editor now holds exactly what was written, so nothing is unsaved.
         $this->body = (string) $artifact->body;
         $this->clearRevisionSelection();
         unset($this->revisions, $this->artifacts);
+        $this->announceFormSettled();
 
         Flux::toast(variant: 'success', text: __('Revision restored.'));
     }
@@ -515,6 +528,8 @@ class ArtifactsManager extends Component
         unset($this->artifacts, $this->revisions, $this->revisionOrdinals);
         $this->forgetComparison();
 
+        $this->announceFormSettled();
+
         Flux::toast(variant: 'success', text: $message);
     }
 
@@ -526,6 +541,7 @@ class ArtifactsManager extends Component
         $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'compareFromId', 'compareToId']);
         $this->resetErrorBag();
         $this->forgetComparison();
+        $this->announceFormSettled();
     }
 
     public function render(): View

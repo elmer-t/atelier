@@ -1,4 +1,39 @@
-<div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
+{{--
+    Unsaved-work guard. Saving keeps the artifact open, so a Creator sits in the
+    editor far longer than before — and every control marked `data-unsaved-guard`
+    throws the draft away without asking. The flag is set by any input inside the
+    component and cleared whenever the server settles the form (open, save, close),
+    which the component announces as `artifact-form-settled`.
+
+    Guarding client-side is the only way that works: `wire:model` on the body is
+    deferred, so at the moment of the click the server still holds the last saved
+    text and cannot tell that anything is unsaved.
+
+    The listener captures, so it runs before the wire:click on the control it is
+    protecting; stopping propagation there keeps that click from ever arriving.
+--}}
+<div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700"
+    x-data="{
+        unsaved: false,
+        guard(event) {
+            if (! this.unsaved || ! event.target.closest('[data-unsaved-guard]')) {
+                return
+            }
+
+            if (window.confirm('This artifact has changes you did not save. Discard them?')) {
+                this.unsaved = false
+
+                return
+            }
+
+            event.stopPropagation()
+            event.preventDefault()
+        },
+    }"
+    x-on:input="unsaved = true"
+    x-on:click.capture="guard($event)"
+    x-on:artifact-form-settled.window="unsaved = false"
+>
     <div class="mb-4 flex items-center justify-between">
         <div>
             <flux:heading size="sm">Artifacts</flux:heading>
@@ -25,7 +60,7 @@
                     </flux:badge>
                     <div class="flex-1 truncate">
                         <button type="button" wire:click="startEdit({{ $artifact->id }})"
-                            data-test="open-artifact-{{ $artifact->id }}"
+                            data-test="open-artifact-{{ $artifact->id }}" data-unsaved-guard
                             class="max-w-full truncate text-sm hover:underline">{{ $artifact->title }}</button>
                         @if ($artifact->isFile())
                             <span class="ml-1 text-xs text-zinc-400">
@@ -38,7 +73,8 @@
                             wire:click="moveUp({{ $artifact->id }})" :disabled="$loop->first" />
                         <flux:button size="xs" variant="ghost" icon="chevron-down"
                             wire:click="moveDown({{ $artifact->id }})" :disabled="$loop->last" />
-                        <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="startEdit({{ $artifact->id }})" />
+                        <flux:button size="xs" variant="ghost" icon="pencil-square"
+                            data-unsaved-guard wire:click="startEdit({{ $artifact->id }})" />
                         <flux:button size="xs" variant="ghost" icon="trash"
                             wire:click="deleteArtifact({{ $artifact->id }})"
                             wire:confirm="Delete this artifact?" />
@@ -274,7 +310,8 @@
 
                 <div class="flex justify-end gap-2">
                     {{-- Saving keeps the artifact open; this is the only way out of it. --}}
-                    <flux:button variant="ghost" wire:click="resetForm" type="button" data-test="close-artifact">Close</flux:button>
+                    <flux:button variant="ghost" wire:click="resetForm" type="button"
+                        data-test="close-artifact" data-unsaved-guard>Close</flux:button>
                     <flux:button type="submit" variant="primary">Save</flux:button>
                 </div>
             </form>
