@@ -55,5 +55,9 @@
         @case('arrow-left')
             <path d="M13 8H3.25M6.75 4.5 3.25 8l3.5 3.5" />
             @break
+
+        @case('comment')
+            <path d="M14 9.25a2 2 0 0 1-2 2H5.5L2 13.75V4.25a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z" />
+            @break
     @endswitch
 </svg>

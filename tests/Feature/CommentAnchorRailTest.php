@@ -151,6 +151,20 @@ it('withholds the composer until an anchor has been picked', function () {
 });
 
 /**
+ * The invitation to comment is drawn from the stage's own icon set — one 16-grid, one stroke
+ * weight — rather than from an emoji, which no other control on the page uses.
+ */
+it('marks the comment prompt and the gutter pin with a stroked glyph, not an emoji', function () {
+    $project = Project::factory()->public()->create();
+    $artifact = Artifact::factory()->for($project)->markdown('# Brief')->create();
+
+    $html = $this->get(route('project.artifact', [$project, $artifact]))->assertOk()->getContent();
+
+    expect($html)->not->toContain('💬')
+        ->and($html)->toContain('M14 9.25a2 2 0 0 1-2 2H5.5L2 13.75V4.25a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z');
+});
+
+/**
  * The empty state and the composer occupy the same placement layer, so both on screen at
  * once means one printed over the other. The prompt has done its job by the time a spot is
  * picked, so it stands down — on a point-anchored artifact as much as a markdown one.

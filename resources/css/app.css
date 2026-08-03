@@ -325,7 +325,7 @@ select:focus[data-flux-control] {
     background-color: rgb(245 158 11 / 0.06);
 }
 .comment-gutter-pin {
-    @apply absolute flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm opacity-0 shadow-sm transition dark:border-zinc-700 dark:bg-zinc-900;
+    @apply absolute flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-400 opacity-0 shadow-sm transition dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-500;
     top: 0.05em;
     left: -2.5rem;
 }
@@ -334,7 +334,7 @@ select:focus[data-flux-control] {
     @apply opacity-100;
 }
 .comment-gutter-pin:hover {
-    @apply shadow-md;
+    @apply text-zinc-700 shadow-md dark:text-zinc-200;
     transform: scale(1.08);
 }
 

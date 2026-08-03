@@ -617,7 +617,10 @@
                 pin.className = 'comment-gutter-pin';
                 pin.title = '{{ __('Comment on this paragraph') }}';
                 pin.setAttribute('aria-label', '{{ __('Comment on this paragraph') }}');
-                pin.textContent = '💬';
+                // Same 16-grid and stroke weight as the stage bar's glyphs, so the pin reads
+                // as one of this page's controls rather than as a dropped-in emoji. Attributes
+                // are single-quoted: this whole script sits inside one double-quoted x-data.
+                pin.innerHTML = `<svg viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true' class='h-4 w-4 flex-none'><path d='M14 9.25a2 2 0 0 1-2 2H5.5L2 13.75V4.25a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z' /></svg>`;
                 pin.addEventListener('click', (event) => {
                     event.stopPropagation();
                     this.commentOnBlock(quote);
@@ -816,8 +819,9 @@
 
             @unless (filled($draftAnchor))
                 @if ($artifact->isMarkdown())
-                    <p class="mt-1 text-xs leading-snug text-zinc-400 dark:text-zinc-500">
-                        💬 {{ __('Hover a paragraph and click the pin to add a comment.') }}
+                    <p class="mt-1 flex items-start gap-1.5 text-xs leading-snug text-zinc-400 dark:text-zinc-500">
+                        <x-public.stage-icon name="comment" />
+                        <span>{{ __('Hover a paragraph and click the pin to add a comment.') }}</span>
                     </p>
                 @else
                     {{-- No prose to quote, so the anchor is a point on the artifact rather than
