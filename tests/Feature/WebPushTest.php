@@ -152,7 +152,7 @@ it('offers the push opt-in to a Client right after they post a comment', functio
         ->assertSeeHtml('data-test="post-comment-push-offer"')
         // A Client has no settings page to be sent to, so the offer states the refusal
         // itself rather than folding away as though the ask had been honoured.
-        ->assertSee('This browser would not take notifications');
+        ->assertSee('This browser cannot take notifications');
 });
 
 it('does not offer the Client push prompt to a Creator posting on the stage', function () {

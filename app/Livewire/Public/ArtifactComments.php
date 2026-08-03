@@ -168,7 +168,7 @@ class ArtifactComments extends Component
         if ($existing && ! $existing->isClient()) {
             // A credentialed account owns this address; don't let a passwordless
             // commenter act as them (email squatting guard, ADR-0003).
-            $this->addError('captureEmail', __('That email belongs to an account. Please log in to comment.'));
+            $this->addError('captureEmail', __('This email address has an account. Log in to write a comment.'));
 
             return;
         }
@@ -177,7 +177,7 @@ class ArtifactComments extends Component
             // The find-or-create would otherwise resurrect a Creator's deactivation
             // on the next comment (#30). Say no more than that the address is
             // unusable — whether someone blocked them is not theirs to learn.
-            $this->addError('captureEmail', __('That email cannot be used to comment here.'));
+            $this->addError('captureEmail', __('You cannot use this email address to write a comment here.'));
 
             return;
         }
@@ -419,7 +419,7 @@ class ArtifactComments extends Component
     private function withinLimit(string $key, int $perMinute, string $errorField): bool
     {
         if (RateLimiter::tooManyAttempts($key, $perMinute)) {
-            $this->addError($errorField, __('Too many attempts. Please wait :seconds seconds and try again.', [
+            $this->addError($errorField, __('You sent too many requests. Wait :seconds seconds. Then try again.', [
                 'seconds' => RateLimiter::availableIn($key),
             ]));
 
@@ -458,7 +458,7 @@ class ArtifactComments extends Component
 
         if ($commenter === null) {
             $this->identified = false;
-            $this->addError('draft', __('Add your name and email first.'));
+            $this->addError('draft', __('First, add your name and your email address.'));
         }
 
         return $commenter;

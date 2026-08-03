@@ -129,7 +129,7 @@ it('admits a failed push opt-in and sends the Creator somewhere that explains it
 
     Livewire::actingAs($creator)->test(NotificationBell::class)
         ->assertSeeHtml('data-test="bell-push-failed"')
-        ->assertSee('Could not turn notifications on.')
+        ->assertSee('The system cannot start the notifications.')
         ->assertSee(route('notifications.edit'), escape: false);
 });
 

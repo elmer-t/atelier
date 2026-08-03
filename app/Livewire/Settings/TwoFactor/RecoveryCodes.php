@@ -42,7 +42,7 @@ class RecoveryCodes extends Component
             try {
                 $this->recoveryCodes = json_decode(decrypt($user->two_factor_recovery_codes), true);
             } catch (Exception) {
-                $this->addError('recoveryCodes', 'Failed to load recovery codes');
+                $this->addError('recoveryCodes', __('The system cannot show the recovery codes. Try again.'));
 
                 $this->recoveryCodes = [];
             }

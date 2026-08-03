@@ -203,7 +203,7 @@ class Security extends Component
             $this->qrCodeSvg = $user?->twoFactorQrCodeSvg();
             $this->manualSetupKey = decrypt($user->two_factor_secret);
         } catch (Exception) {
-            $this->addError('setupData', 'Failed to fetch setup data.');
+            $this->addError('setupData', __('The system cannot read the setup data. Try again.'));
 
             $this->reset('qrCodeSvg', 'manualSetupKey');
         }

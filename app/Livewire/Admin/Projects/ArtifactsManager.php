@@ -291,8 +291,8 @@ class ArtifactsManager extends Component
             ],
             'placement' => ['required', 'in:stage,download'],
         ], [
-            'file.extensions' => __('That file type is not allowed. Upload a document or image (e.g. PDF, image, or Office file).'),
-            'file.mimetypes' => __('That file type is not allowed. Upload a document or image (e.g. PDF, image, or Office file).'),
+            'file.extensions' => __('You cannot upload this type of file. Upload a document or an image, for example a PDF file or an Office file.'),
+            'file.mimetypes' => __('You cannot upload this type of file. Upload a document or an image, for example a PDF file or an Office file.'),
         ]);
 
         $artifact = $this->editingArtifactId
@@ -320,7 +320,7 @@ class ArtifactsManager extends Component
             );
 
             if ($stored === false) {
-                $this->addError('file', __('The file could not be stored.'));
+                $this->addError('file', __('The system cannot store the file. Try again.'));
 
                 return;
             }

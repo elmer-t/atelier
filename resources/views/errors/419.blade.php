@@ -1,5 +1,5 @@
-<x-public.error :title="__('Session expired')" :heading="__('Your session expired')" code="419">
-    {{ __('For your security the page timed out before it was submitted. Head back and try again — if the project is password-protected you may need to unlock it once more.') }}
+<x-public.error :title="__('Session ended')" :heading="__('Your session ended')" code="419">
+    {{ __('The page was open too long. For your safety, the system stopped the session. Go back and send the page again. If the project has a password, give the password again.') }}
 
     <x-slot:action>
         <a href="{{ url()->previous() }}"

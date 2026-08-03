@@ -60,7 +60,7 @@ class PushSubscriptionController extends Controller
     private function store(Request $request, ?User $user): JsonResponse
     {
         if ($user === null) {
-            return response()->json(['message' => __('Not identified.')], 403);
+            return response()->json(['message' => __('The system cannot identify you.')], 403);
         }
 
         $validated = $request->validate([
@@ -83,7 +83,7 @@ class PushSubscriptionController extends Controller
     private function forget(Request $request, ?User $user): JsonResponse
     {
         if ($user === null) {
-            return response()->json(['message' => __('Not identified.')], 403);
+            return response()->json(['message' => __('The system cannot identify you.')], 403);
         }
 
         $validated = $request->validate([

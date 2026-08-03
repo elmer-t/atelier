@@ -128,7 +128,7 @@
             {{-- The bell has no room to explain; it says that it failed and points at the
                  page that names the reason. --}}
             <p x-show="failed" x-cloak class="mt-2 text-xs text-red-500 dark:text-red-400" data-test="bell-push-failed">
-                {{ __('Could not turn notifications on.') }}
+                {{ __('The system cannot start the notifications.') }}
                 <a href="{{ route('notifications.edit') }}" class="underline underline-offset-2" wire:navigate>{{ __('See why') }}</a>
             </p>
         </div>

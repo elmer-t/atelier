@@ -40,7 +40,7 @@ class BundleUnpacker
         $zip = new ZipArchive;
 
         if ($zip->open($zipPath) !== true) {
-            throw new RuntimeException('The uploaded file is not a valid zip archive.');
+            throw new RuntimeException('The file that you uploaded is not a correct zip archive.');
         }
 
         try {
@@ -153,7 +153,7 @@ class BundleUnpacker
                 return $candidate;
             }
 
-            throw new RuntimeException("The specified entry file [{$entryFile}] was not found in the bundle.");
+            throw new RuntimeException("The bundle does not contain the entry file [{$entryFile}].");
         }
 
         if (File::exists($destination.'/index.html')) {
@@ -166,7 +166,7 @@ class BundleUnpacker
             ->sortBy(fn ($file) => substr_count($file->getRelativePathname(), '/'));
 
         if ($htmlFiles->isEmpty()) {
-            throw new RuntimeException('No HTML entry file was found in the bundle. Please specify one.');
+            throw new RuntimeException('The bundle does not contain an HTML entry file. Select an entry file.');
         }
 
         return str_replace('\\', '/', $htmlFiles->first()->getRelativePathname());

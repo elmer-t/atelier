@@ -6,13 +6,13 @@
      * exactly what it did while a browser was rejecting the subscription outright.
      */
     $pushFailures = [
-        'unsupported' => __('This browser will not take push notifications on this address. They need a page served over https.'),
-        'unconfigured' => __('This copy of Atelier has no push keys set, so notifications cannot be turned on.'),
-        'denied' => __('Notifications are blocked for this site. Allow them in your browser settings, then try again.'),
-        'no-worker' => __('The background worker that notifications rely on would not start in this browser.'),
-        'push-service' => __('Your browser could not register with its own push service. Check that it allows push messaging — some Chromium browsers turn it off by default — then try again.'),
-        'server' => __('The subscription was made but Atelier could not store it. Try again in a moment.'),
-        'unknown' => __('Notifications could not be turned on in this browser.'),
+        'unsupported' => __('This browser cannot take push notifications at this address. Push notifications need a page with https.'),
+        'unconfigured' => __('This copy of Atelier has no push keys. You cannot start the notifications.'),
+        'denied' => __('This site cannot send notifications. Permit the notifications in your browser settings. Then try again.'),
+        'no-worker' => __('The background worker cannot start in this browser. Notifications need this worker.'),
+        'push-service' => __('Your browser cannot connect to its push service. Make sure that the browser permits push messages. Some Chromium browsers stop push messages by default. Then try again.'),
+        'server' => __('Your browser made the subscription, but Atelier cannot store it. Wait a short time. Then try again.'),
+        'unknown' => __('You cannot start the notifications in this browser.'),
     ];
 @endphp
 

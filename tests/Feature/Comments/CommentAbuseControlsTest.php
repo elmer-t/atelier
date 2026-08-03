@@ -149,8 +149,8 @@ it('tells a throttled visitor how long to wait', function () {
         ->set('captureName', 'Jane')
         ->set('captureEmail', 'second@example.com')
         ->call('saveIdentity')
-        ->assertSee('Too many attempts')
-        ->assertSee('seconds and try again');
+        ->assertSee('You sent too many requests')
+        ->assertSee('seconds. Then try again.');
 });
 
 it('counts rejected attempts against the limit so invalid input is not free', function () {

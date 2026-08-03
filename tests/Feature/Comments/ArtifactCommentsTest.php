@@ -305,7 +305,7 @@ it('refuses a deactivated email and does not resurrect it as a new user', functi
         ->assertHasErrors('captureEmail')
         ->assertSet('identified', false)
         // The message says the address is unusable, not that someone blocked them.
-        ->assertSee('That email cannot be used to comment here.');
+        ->assertSee('You cannot use this email address to write a comment here.');
 
     expect(User::where('email', 'nuisance@example.com')->count())->toBe(1)
         ->and($blocked->fresh()->isDeactivated())->toBeTrue()

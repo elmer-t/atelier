@@ -32,3 +32,19 @@ it('serves branded pages for 419, 403 and 500', function () {
             ->toContain(config('app.name', 'Atelier'));
     }
 });
+
+it('writes the error pages in Simplified Technical English', function (string $code, string $sentence) {
+    $html = view("errors.{$code}")->render();
+
+    expect($html)->toContain($sentence);
+
+    // ASD-STE100 forbids contractions, courtesy words and idioms in the body copy.
+    foreach (['isn&#039;t', 'don&#039;t', 'that&#039;s', 'please', 'Please', 'head back', 'Head back'] as $banned) {
+        expect($html)->not->toContain($banned);
+    }
+})->with([
+    ['404', 'The link is not correct, or the project is not available.'],
+    ['403', 'Your link does not give access to this page.'],
+    ['419', 'The page was open too long.'],
+    ['500', 'The error is in our system.'],
+]);

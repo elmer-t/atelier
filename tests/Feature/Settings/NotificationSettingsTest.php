@@ -28,7 +28,7 @@ it('carries a plain-language line for every way the opt-in can fail', function (
     }
 
     // The one a browser refusing to register reports, in words that say what to check.
-    $response->assertSee('could not register with its own push service', escape: false);
+    $response->assertSee('Your browser cannot connect to its push service', escape: false);
 });
 
 it('keeps the notification settings page behind auth', function () {

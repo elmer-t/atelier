@@ -858,7 +858,7 @@
                      that refused leaves it standing, saying so, rather than quietly
                      folding away as though the ask had been honoured. --}}
                 <span x-show="! failed" class="flex-1">{{ __('Want a heads-up when someone replies? We can notify you in this browser.') }}</span>
-                <span x-show="failed" x-cloak class="flex-1">{{ __('This browser would not take notifications, so we cannot let you know here.') }}</span>
+                <span x-show="failed" x-cloak class="flex-1">{{ __('This browser cannot take notifications. We cannot tell you about new replies here.') }}</span>
                 <button
                     type="button"
                     x-show="! failed"
@@ -964,7 +964,7 @@
 
                     {{-- Detached: the quote is the only trace left, so it is always shown here. --}}
                     <p class="rail-detached text-[11px] font-medium text-amber-600 dark:text-amber-500">
-                        ⚠ {{ __('This text is no longer in the current version.') }}
+                        ⚠ {{ __('This text is not in the new version.') }}
                     </p>
 
                     @if (filled($quote))

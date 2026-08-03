@@ -140,7 +140,7 @@ class Manage extends Component
                     ->where('mime_type', 'like', 'image/%');
             })],
         ], [
-            'newPassword.min' => __('Use at least :min characters. Tip: click “Generate” for a strong, easy-to-share passphrase.', ['min' => 8]),
+            'newPassword.min' => __('Use a minimum of :min characters. Click “Generate” to make a passphrase that is strong and easy to share.', ['min' => 8]),
         ]);
 
         $becomingPrivate = $validated['visibility'] === ProjectVisibility::Private->value;
