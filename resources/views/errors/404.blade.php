@@ -1,5 +1,5 @@
-<x-public.error :title="__('Not available')" :heading="__('This project is not available')" code="404">
-    {{ __('The link is not correct, or the project is not available. If a person sent you this link, ask that person for a new link.') }}
+<x-public.error :title="__('Not available')" :heading="__('This page is not available')" code="404">
+    {{ __('The link is not correct, or the content is not available. If a person sent you this link, ask that person for a new link.') }}
 
     <x-slot:action>
         <a href="{{ route('home') }}"

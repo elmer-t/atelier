@@ -8,8 +8,7 @@ it('renders a friendly branded 404 for an archived project link', function () {
     $response = $this->get(route('project.show', $project))->assertNotFound();
 
     // Branded, audience-appropriate copy — not the bare Laravel screen.
-    $response->assertSee('This project');
-    $response->assertSee('available');
+    $response->assertSee('This page is not available');
     $response->assertSee(config('app.name', 'Atelier'));
     // Generic on purpose: never state this project's actual status (specs §10).
     $response->assertDontSee('This project has been archived');
@@ -43,7 +42,7 @@ it('writes the error pages in Simplified Technical English', function (string $c
         expect($html)->not->toContain($banned);
     }
 })->with([
-    ['404', 'The link is not correct, or the project is not available.'],
+    ['404', 'The link is not correct, or the content is not available.'],
     ['403', 'Your link does not give access to this page.'],
     ['419', 'The page was open too long.'],
     ['500', 'The error is in our system.'],
