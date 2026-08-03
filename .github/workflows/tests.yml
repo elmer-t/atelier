@@ -31,5 +31,10 @@ jobs:
       - name: Setup Application
         run: composer setup
 
+      # Browser tests (tests/Browser) drive a real Chromium via Playwright.
+      # `composer setup` installs the npm package; the binary is separate.
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
       - name: Run CI Checks
         run: composer ci:check
