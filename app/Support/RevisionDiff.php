@@ -22,17 +22,37 @@ class RevisionDiff
     public function __construct(private LineDiffer $lines) {}
 
     /**
-     * The diff as alternating unchanged and changed sections, in document order.
+     * The whole comparison in one pass: the diff as alternating unchanged and
+     * changed sections in document order, plus the line counts a Creator reads
+     * before deciding whether to open it at all.
+     *
      * A changed section carries a `@@ -old +new @@` header naming the lines it
      * covers; an unchanged section is the material between two changes, which the
      * view offers rather than shows.
      *
-     * @return list<DiffSection>
+     * One call rather than two, because the underlying longest-common-subsequence
+     * is quadratic in the number of lines and both answers come off the same walk.
+     *
+     * @return array{sections: list<DiffSection>, added: int, removed: int}
      */
-    public function sections(string $old, string $new, int $context = self::CONTEXT_LINES): array
+    public function compare(string $old, string $new, int $context = self::CONTEXT_LINES): array
     {
         $rows = $this->rows($old, $new);
+        $types = array_column($rows, 'type');
 
+        return [
+            'sections' => $this->sections($rows, $context),
+            'added' => count(array_keys($types, 'added', true)),
+            'removed' => count(array_keys($types, 'removed', true)),
+        ];
+    }
+
+    /**
+     * @param  list<DiffRow>  $rows
+     * @return list<DiffSection>
+     */
+    private function sections(array $rows, int $context): array
+    {
         /** @var array<int, true> $keep Indices within `$context` lines of a change. */
         $keep = [];
 
@@ -74,22 +94,6 @@ class RevisionDiff
     }
 
     /**
-     * How many lines the change added and removed, for the summary a Creator reads
-     * before deciding whether to open the diff at all.
-     *
-     * @return array{added: int, removed: int}
-     */
-    public function stats(string $old, string $new): array
-    {
-        $types = array_column($this->lines->diff($old, $new), 'type');
-
-        return [
-            'added' => count(array_keys($types, 'added', true)),
-            'removed' => count(array_keys($types, 'removed', true)),
-        ];
-    }
-
-    /**
      * Diff rows numbered on the side they exist on, with each changed run ordered
      * removals-first so a rewritten line reads as "was, now".
      *
@@ -123,16 +127,17 @@ class RevisionDiff
      */
     private function removalsFirst(array $rows): array
     {
+        // Indices rather than rows, so the reordering cannot blur the row shape.
         $order = [];
         $run = [];
 
-        $flush = function (array $run) use ($rows): array {
-            $indices = fn (string $type): array => array_values(array_filter(
+        $reordered = function (array $run) use ($rows): array {
+            $ofType = fn (string $type): array => array_values(array_filter(
                 $run,
                 fn (int $index): bool => $rows[$index]['type'] === $type,
             ));
 
-            return [...$indices('removed'), ...$indices('added')];
+            return [...$ofType('removed'), ...$ofType('added')];
         };
 
         foreach ($rows as $index => $row) {
@@ -142,11 +147,11 @@ class RevisionDiff
                 continue;
             }
 
-            $order = [...$order, ...$flush($run), $index];
+            $order = [...$order, ...$reordered($run), $index];
             $run = [];
         }
 
-        $order = [...$order, ...$flush($run)];
+        $order = [...$order, ...$reordered($run)];
 
         return array_map(fn (int $index): array => $rows[$index], $order);
     }

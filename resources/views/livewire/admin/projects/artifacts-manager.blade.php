@@ -60,9 +60,13 @@
                 @if ($formType === 'markdown')
                     @php
                         $ordinals = $this->revisionOrdinals;
+                        $railStates = $this->railStates;
                         $from = $this->compareFrom;
                         $to = $this->compareTo;
                         $comparison = $this->comparison;
+                        // The panel is headed by the newer of the pair — the Revision whose
+                        // save the comparison describes — or by the one being read alone.
+                        $subject = $to ?? $from;
                     @endphp
 
                     {{-- The history panel takes the editor's own slot rather than covering
@@ -90,19 +94,13 @@
                         <div class="rounded-lg border border-zinc-200 dark:border-zinc-700" data-test="revision-panel">
                             <div class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
                                 <flux:heading size="sm">
-                                    @if ($to)
-                                        Revision {{ $ordinals[$from->id] }} → {{ $ordinals[$to->id] }}
-                                    @else
-                                        Revision {{ $ordinals[$from->id] }}
-                                    @endif
+                                    Revision {{ $ordinals[$from->id] }}@if ($to) → {{ $ordinals[$to->id] }}@endif
                                 </flux:heading>
 
                                 <flux:text size="sm" class="text-zinc-400">
-                                    @if ($to)
-                                        saved {{ $to->created_at?->diffForHumans() }} by {{ $to->author?->name ?? 'Unknown' }}
-                                    @else
-                                        saved {{ $from->created_at?->diffForHumans() }} by {{ $from->author?->name ?? 'Unknown' }}
-                                    @endif
+                                    saved {{ $subject->created_at?->format('M j, H:i') }}
+                                    ({{ $subject->created_at?->diffForHumans() }})
+                                    by {{ $subject->author?->name ?? 'Unknown' }}
                                 </flux:text>
 
                                 @if ($comparison)
@@ -117,8 +115,8 @@
                                         <flux:button size="xs" variant="ghost" icon="arrow-uturn-left" type="button"
                                             data-test="restore-revision"
                                             wire:click="restoreRevision({{ $from->id }})"
-                                            wire:confirm="Restore revision {{ $ordinals[$from->id] }}? It is added as a new revision, so no history is lost.">
-                                            Restore revision {{ $ordinals[$from->id] }}
+                                            wire:confirm="Restore Revision {{ $ordinals[$from->id] }}? It is added as a new Revision, so no history is lost.">
+                                            Restore Revision {{ $ordinals[$from->id] }}
                                         </flux:button>
                                     @endif
                                     <flux:button size="xs" variant="ghost" icon="x-mark" type="button"
@@ -168,7 +166,7 @@
                             <div class="flex items-center gap-3 border-b border-zinc-200 px-3 py-2 dark:border-zinc-700">
                                 <flux:heading size="sm">History</flux:heading>
                                 <flux:text size="sm" class="text-zinc-400">
-                                    {{ $this->revisions->count() }} {{ Str::plural('revision', $this->revisions->count()) }}
+                                    {{ $this->revisions->count() }} {{ Str::plural('Revision', $this->revisions->count()) }}
                                 </flux:text>
                             </div>
 
@@ -178,34 +176,31 @@
                                 <div class="flex min-w-max items-stretch">
                                     @foreach ($this->revisions->reverse() as $revision)
                                         @php
-                                            $isEnd = in_array($revision->id, [$compareFromId, $compareToId], true);
-                                            $inRange = $compareFromId !== null && $compareToId !== null
-                                                && $revision->id >= min($compareFromId, $compareToId)
-                                                && $revision->id <= max($compareFromId, $compareToId);
+                                            $state = $railStates[$revision->id];
                                         @endphp
 
                                         @unless ($loop->first)
                                             <div @class([
                                                 'mt-3 h-0.5 w-6 shrink-0 self-start',
-                                                'bg-sky-400' => $inRange,
-                                                'bg-zinc-200 dark:bg-zinc-700' => ! $inRange,
+                                                'bg-sky-400' => $state['between'] || $state['part'] === 'to',
+                                                'bg-zinc-200 dark:bg-zinc-700' => ! $state['between'] && $state['part'] !== 'to',
                                             ])></div>
                                         @endunless
 
                                         <button type="button" wire:key="rev-{{ $revision->id }}"
                                             data-test="pick-revision-{{ $revision->id }}"
-                                            aria-pressed="{{ $isEnd ? 'true' : 'false' }}"
+                                            aria-pressed="{{ $state['picked'] ? 'true' : 'false' }}"
                                             wire:click="pickRevision({{ $revision->id }})"
                                             @class([
                                                 'flex w-36 shrink-0 flex-col items-start rounded-lg px-2 py-1 text-left transition',
-                                                'bg-sky-50 dark:bg-sky-950/40' => $inRange || $isEnd,
-                                                'hover:bg-zinc-50 dark:hover:bg-zinc-800/60' => ! $inRange && ! $isEnd,
+                                                'bg-sky-50 dark:bg-sky-950/40' => $state['picked'] || $state['between'],
+                                                'hover:bg-zinc-50 dark:hover:bg-zinc-800/60' => ! $state['picked'] && ! $state['between'],
                                             ])>
                                             <span @class([
                                                 'size-3 rounded-full ring-2 ring-offset-2 ring-offset-white dark:ring-offset-zinc-800',
-                                                'bg-sky-500 ring-sky-500' => $isEnd,
-                                                'bg-white ring-sky-400 dark:bg-zinc-800' => $inRange && ! $isEnd,
-                                                'bg-zinc-300 ring-transparent dark:bg-zinc-600' => ! $inRange && ! $isEnd,
+                                                'bg-sky-500 ring-sky-500' => $state['picked'],
+                                                'bg-white ring-sky-400 dark:bg-zinc-800' => $state['between'],
+                                                'bg-zinc-300 ring-transparent dark:bg-zinc-600' => ! $state['picked'] && ! $state['between'],
                                             ])></span>
 
                                             <span class="mt-2 text-xs font-medium">
@@ -215,11 +210,11 @@
                                                 @endif
                                             </span>
                                             <span class="w-full truncate text-[11px] text-zinc-400">{{ $revision->author?->name ?? 'Unknown' }}</span>
-                                            <span class="text-[11px] text-zinc-400">{{ $revision->created_at?->diffForHumans(short: true) }}</span>
+                                            <span class="text-[11px] text-zinc-400">{{ $revision->created_at?->format('M j, H:i') }}</span>
 
-                                            @if ($isEnd)
+                                            @if ($state['part'])
                                                 <span class="mt-1 rounded bg-sky-500 px-1 text-[10px] font-semibold text-white">
-                                                    {{ $revision->id === $compareFromId && $compareToId !== null ? 'from' : ($compareToId === null ? 'reading' : 'to') }}
+                                                    {{ $state['part'] }}
                                                 </span>
                                             @endif
                                         </button>
@@ -227,12 +222,12 @@
                                 </div>
 
                                 <flux:text size="sm" class="mt-2 text-zinc-400">
-                                    @if ($compareFromId !== null && $compareToId === null)
-                                        Pick a second revision to compare against, or click this one again to start over.
-                                    @elseif ($compareToId !== null)
-                                        Click any revision to start a new comparison.
+                                    @if ($compareToId !== null)
+                                        Click any Revision to start a new comparison.
+                                    @elseif ($compareFromId !== null)
+                                        Click a second Revision to compare the two, or this one again to close it.
                                     @else
-                                        Click a revision to read it. Click a second one to compare the two.
+                                        Click a Revision to read it. Click a second one to compare the two.
                                     @endif
                                 </flux:text>
                             </div>

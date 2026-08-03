@@ -30,6 +30,15 @@ class PrototypeRevisionsSeeder extends Seeder
 {
     public function run(): void
     {
+        // Deleting Revisions is the one thing ADR-0005 forbids the application to do.
+        // This seeder does it to keep re-runs idempotent, which is only defensible
+        // because it never runs against real content.
+        if (app()->isProduction()) {
+            $this->command->warn('PrototypeRevisionsSeeder rewrites Revision history — refusing to run in production.');
+
+            return;
+        }
+
         $project = Project::query()->where('title', 'Harbor District Masterplan')->first()
             ?? Project::query()->orderBy('id')->firstOrFail();
 
@@ -60,8 +69,11 @@ class PrototypeRevisionsSeeder extends Seeder
             $minutesAgo = count($bodies) * 340;
 
             foreach ($bodies as $index => $body) {
-                // $rewinds[$i] undoes the save that produced $bodies[$i + 1].
-                $author = ($rewinds[$index - 1]['by'] ?? 'creator') === 'agent' ? $agent : $creator;
+                // $rewinds[$i] undoes the save that produced $bodies[$i + 1], so the
+                // first body predates every listed save and belongs to the Creator.
+                $author = ($rewinds[$index - 1]['by'] ?? UserRole::Creator) === UserRole::Agent
+                    ? $agent
+                    : $creator;
 
                 $revision = $writer->update($artifact, $body, $author);
                 $revision?->forceFill(['created_at' => now()->subMinutes($minutesAgo)])->save();
@@ -78,7 +90,7 @@ class PrototypeRevisionsSeeder extends Seeder
      * the bodies oldest first. A step whose text no longer matches is reported and
      * skipped rather than silently producing a bogus diff.
      *
-     * @param  list<array{by: string, undo: callable(string): string}>  $rewinds
+     * @param  list<array{by: UserRole, undo: callable(string): string}>  $rewinds
      * @return list<string>
      */
     private function rewind(Artifact $artifact, array $rewinds): array
@@ -106,7 +118,7 @@ class PrototypeRevisionsSeeder extends Seeder
      * Per Artifact, the saves to undo — oldest save first, each described by who made
      * it and how to reverse it.
      *
-     * @return array<string, list<array{by: string, undo: callable(string): string}>>
+     * @return array<string, list<array{by: UserRole, undo: callable(string): string}>>
      */
     private function rewinds(): array
     {
@@ -115,8 +127,8 @@ class PrototypeRevisionsSeeder extends Seeder
                 // A principle inserted mid-list, renumbering everything below it —
                 // the case a line diff reports worst.
                 [
-                    'by' => 'creator',
-                    'undo' => fn (string $b): string => str_replace(
+                    'by' => UserRole::Creator,
+                    'undo' => fn (string $body): string => str_replace(
                         [
                             '## Five principles',
                             "3. **Build for weather that is coming, not weather that was.** Ground floors sit above the 2100 flood line and the whole district drains toward planted basins rather than pipes.\n",
@@ -129,14 +141,14 @@ class PrototypeRevisionsSeeder extends Seeder
                             '3. **Mix uses on every block.**',
                             '4. **Keep what works.**',
                         ],
-                        $b,
+                        $body,
                     ),
                 ],
 
                 // The Agent tightening prose: three paragraphs, a handful of words each.
                 [
-                    'by' => 'agent',
-                    'undo' => fn (string $b): string => str_replace(
+                    'by' => UserRole::Agent,
+                    'undo' => fn (string $body): string => str_replace(
                         [
                             'its working waterfront',
                             'a mixed, resilient neighbourhood',
@@ -153,27 +165,27 @@ class PrototypeRevisionsSeeder extends Seeder
                             'weather honestly and the lighting',
                             'warm and low.',
                         ],
-                        $b,
+                        $body,
                     ),
                 ],
 
                 // A whole closing paragraph appended.
                 [
-                    'by' => 'creator',
-                    'undo' => fn (string $b): string => rtrim(preg_replace(
+                    'by' => UserRole::Creator,
+                    'undo' => fn (string $body): string => rtrim(preg_replace(
                         '/\n+We are explicitly avoiding a single architectural language\..*$/s',
                         '',
-                        $b,
-                    ) ?? $b)."\n",
+                        $body,
+                    ) ?? $body)."\n",
                 ],
 
                 // The smallest change a compare view still has to make findable.
                 [
-                    'by' => 'agent',
-                    'undo' => fn (string $b): string => str_replace(
+                    'by' => UserRole::Agent,
+                    'undo' => fn (string $body): string => str_replace(
                         'reads as a single project by a single hand',
                         'reads as one project by one hand',
-                        $b,
+                        $body,
                     ),
                 ],
             ],
@@ -181,8 +193,8 @@ class PrototypeRevisionsSeeder extends Seeder
             'Public Realm & Waterfront' => [
                 // Two numbers and a planting list, far apart in a long document.
                 [
-                    'by' => 'creator',
-                    'undo' => fn (string $b): string => str_replace(
+                    'by' => UserRole::Creator,
+                    'undo' => fn (string $body): string => str_replace(
                         [
                             'the full 1.4 kilometres',
                             'broad timber terraces',
@@ -193,18 +205,18 @@ class PrototypeRevisionsSeeder extends Seeder
                             'narrow timber terraces',
                             'hackberry and hornbeam',
                         ],
-                        $b,
+                        $body,
                     ),
                 ],
 
                 // A section appended at the end, after a long untouched run.
                 [
-                    'by' => 'agent',
-                    'undo' => fn (string $b): string => rtrim(preg_replace(
+                    'by' => UserRole::Agent,
+                    'undo' => fn (string $body): string => rtrim(preg_replace(
                         '/\n+## Open question\n.*$/s',
                         '',
-                        $b,
-                    ) ?? $b)."\n",
+                        $body,
+                    ) ?? $body)."\n",
                 ],
             ],
         ];

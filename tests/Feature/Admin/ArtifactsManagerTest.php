@@ -292,6 +292,18 @@ it('orders a picked pair oldest first however they were clicked', function () {
         ->assertSet('compareToId', $second);
 });
 
+it('puts a Revision back down when the one being read is picked again', function () {
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+    [$first] = revisionsFor($artifact, ['# Two']);
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->call('pickRevision', $first)
+        ->call('pickRevision', $first)
+        ->assertSet('compareFromId', null)
+        ->assertSet('compareToId', null);
+});
+
 it('starts a new selection when a third Revision is picked', function () {
     $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
     [$first, $second, $third] = revisionsFor($artifact, ['# Two', '# Three']);
@@ -341,6 +353,19 @@ it('keeps the unsaved draft body while a Revision is open', function () {
         ->call('pickRevision', $first)
         ->call('clearRevisionSelection')
         ->assertSet('body', '# Draft in progress');
+});
+
+it('says when each Revision was saved and who saved it', function () {
+    $agent = User::factory()->create(['name' => 'Atelier Agent']);
+    $artifact = Artifact::factory()->for($this->project)->markdown('# One')->create();
+
+    $revision = $artifact->revisions()->firstOrFail();
+    $revision->forceFill(['user_id' => $agent->id, 'created_at' => now()->subDays(3)])->save();
+
+    Livewire::test(ArtifactsManager::class, ['project' => $this->project])
+        ->call('startEdit', $artifact->id)
+        ->assertSee('Atelier Agent')
+        ->assertSee($revision->refresh()->created_at->format('M j, H:i'));
 });
 
 it('numbers Revisions from one, oldest first', function () {

@@ -20,6 +20,8 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
+ * @phpstan-import-type DiffSection from RevisionDiff
+ *
  * @property-read Collection<int, ArtifactRevision> $revisions
  * @property-read ArtifactRevision|null $compareFrom
  * @property-read ArtifactRevision|null $compareTo
@@ -100,13 +102,46 @@ class ArtifactsManager extends Component
     #[Computed]
     public function revisionOrdinals(): array
     {
-        $newestFirst = $this->revisions->count();
+        $total = $this->revisions->count();
 
         return $this->revisions
             ->values()
             ->mapWithKeys(fn (ArtifactRevision $revision, int $index) => [
-                $revision->id => $newestFirst - $index,
+                $revision->id => $total - $index,
             ])
+            ->all();
+    }
+
+    /**
+     * How the rail should draw each Revision, keyed by id: whether it is one of the
+     * picked ends, whether it lies between them, and the word for the part it plays.
+     * Derived here rather than in the view because it rests on the invariant that
+     * Revision ids ascend with time (ADR-0005 — the log is only ever appended to).
+     *
+     * @return array<int, array{picked: bool, between: bool, part: string|null}>
+     */
+    #[Computed]
+    public function railStates(): array
+    {
+        $from = $this->compareFromId;
+        $to = $this->compareToId;
+
+        return $this->revisions
+            ->mapWithKeys(function (ArtifactRevision $revision) use ($from, $to): array {
+                $picked = $revision->id === $from || $revision->id === $to;
+
+                return [$revision->id => [
+                    'picked' => $picked,
+                    'between' => $from !== null && $to !== null
+                        && $revision->id > $from && $revision->id < $to,
+                    'part' => match (true) {
+                        ! $picked => null,
+                        $to === null => 'reading',
+                        $revision->id === $from => 'from',
+                        default => 'to',
+                    },
+                ]];
+            })
             ->all();
     }
 
@@ -137,7 +172,7 @@ class ArtifactsManager extends Component
      * The diff between the two picked Revisions as collapsible sections, plus the
      * added/removed counts (User Story 5). Null until two are picked.
      *
-     * @return array{sections: list<array{changed: bool, header: string|null, rows: list<array{type: string, value: string, old: int|null, new: int|null}>}>, added: int, removed: int}|null
+     * @return array{sections: list<DiffSection>, added: int, removed: int}|null
      */
     #[Computed]
     public function comparison(): ?array
@@ -149,12 +184,7 @@ class ArtifactsManager extends Component
             return null;
         }
 
-        $differ = app(RevisionDiff::class);
-
-        return [
-            'sections' => $differ->sections((string) $from->body, (string) $to->body),
-            ...$differ->stats((string) $from->body, (string) $to->body),
-        ];
+        return app(RevisionDiff::class)->compare((string) $from->body, (string) $to->body);
     }
 
     public function startCreate(string $type): void
@@ -231,14 +261,17 @@ class ArtifactsManager extends Component
      * Pick a Revision in the history rail. The first pick opens that Revision to
      * read (User Story 4); a second picks the other end of a comparison (User
      * Story 5), ordered oldest first however they were clicked; a third starts a
-     * new selection from the Revision just clicked.
+     * new selection from the Revision just clicked. Clicking the one Revision
+     * being read puts it back down.
      */
     public function pickRevision(int $revisionId): void
     {
         if ($this->compareFromId === null || $this->compareToId !== null) {
             $this->compareFromId = $revisionId;
             $this->compareToId = null;
-        } elseif ($revisionId !== $this->compareFromId) {
+        } elseif ($revisionId === $this->compareFromId) {
+            $this->compareFromId = null;
+        } else {
             [$this->compareFromId, $this->compareToId] = $revisionId < $this->compareFromId
                 ? [$revisionId, $this->compareFromId]
                 : [$this->compareFromId, $revisionId];
@@ -278,7 +311,7 @@ class ArtifactsManager extends Component
 
     protected function forgetComparison(): void
     {
-        unset($this->compareFrom, $this->compareTo, $this->viewedRevision, $this->comparison);
+        unset($this->compareFrom, $this->compareTo, $this->viewedRevision, $this->comparison, $this->railStates);
     }
 
     protected function saveHtml(BundleUnpacker $unpacker): void
