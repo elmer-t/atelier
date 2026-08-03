@@ -9,7 +9,7 @@ use App\Models\ArtifactRevision;
 use App\Models\Project;
 use App\Services\BundleUnpacker;
 use App\Support\Artifacts\MarkdownRevisionWriter;
-use App\Support\LineDiffer;
+use App\Support\RevisionDiff;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -21,6 +21,9 @@ use Livewire\WithFileUploads;
 
 /**
  * @property-read Collection<int, ArtifactRevision> $revisions
+ * @property-read ArtifactRevision|null $compareFrom
+ * @property-read ArtifactRevision|null $compareTo
+ * @property-read ArtifactRevision|null $viewedRevision
  */
 class ArtifactsManager extends Component
 {
@@ -50,13 +53,13 @@ class ArtifactsManager extends Component
 
     public ?TemporaryUploadedFile $file = null;
 
-    /** Two Revision ids selected for comparison in the history view. */
-    public ?int $diffFromId = null;
+    /**
+     * The Revisions picked in the history rail, oldest first. One on its own is
+     * opened for reading; a second turns the panel into a comparison of the two.
+     */
+    public ?int $compareFromId = null;
 
-    public ?int $diffToId = null;
-
-    /** The past Revision opened for reading in full, if any. */
-    public ?int $viewingRevisionId = null;
+    public ?int $compareToId = null;
 
     /**
      * @return Collection<int, Artifact>
@@ -89,43 +92,69 @@ class ArtifactsManager extends Component
     }
 
     /**
-     * The line diff between the two selected Revisions, added/removed/unchanged.
+     * Revision number as a Creator counts them — 1 is the oldest — keyed by id, so
+     * the rail can name a Revision without knowing its position in the collection.
      *
-     * @return list<array{type: string, value: string}>
+     * @return array<int, int>
      */
     #[Computed]
-    public function diff(): array
+    public function revisionOrdinals(): array
     {
-        if ($this->diffFromId === null || $this->diffToId === null) {
-            return [];
-        }
+        $newestFirst = $this->revisions->count();
 
-        $revisions = $this->revisions->keyBy('id');
-        $from = $revisions->get($this->diffFromId);
-        $to = $revisions->get($this->diffToId);
+        return $this->revisions
+            ->values()
+            ->mapWithKeys(fn (ArtifactRevision $revision, int $index) => [
+                $revision->id => $newestFirst - $index,
+            ])
+            ->all();
+    }
 
-        if ($from === null || $to === null) {
-            return [];
-        }
+    #[Computed]
+    public function compareFrom(): ?ArtifactRevision
+    {
+        return $this->revisions->firstWhere('id', $this->compareFromId);
+    }
 
-        return app(LineDiffer::class)->diff($from->body, $to->body);
+    #[Computed]
+    public function compareTo(): ?ArtifactRevision
+    {
+        return $this->revisions->firstWhere('id', $this->compareToId);
     }
 
     /**
-     * The past Revision the Creator has opened to read in full, or null when none is
-     * open. Read-only — viewing never changes the document (User Story 4).
+     * The past Revision the Creator has opened to read in full, which is the single
+     * picked one before a second is chosen. Read-only — opening a Revision never
+     * changes the document (User Story 4).
      */
     #[Computed]
     public function viewedRevision(): ?ArtifactRevision
     {
-        if ($this->viewingRevisionId === null || $this->editingArtifactId === null) {
+        return $this->compareTo === null ? $this->compareFrom : null;
+    }
+
+    /**
+     * The diff between the two picked Revisions as collapsible sections, plus the
+     * added/removed counts (User Story 5). Null until two are picked.
+     *
+     * @return array{sections: list<array{changed: bool, header: string|null, rows: list<array{type: string, value: string, old: int|null, new: int|null}>}>, added: int, removed: int}|null
+     */
+    #[Computed]
+    public function comparison(): ?array
+    {
+        $from = $this->compareFrom;
+        $to = $this->compareTo;
+
+        if ($from === null || $to === null) {
             return null;
         }
 
-        return $this->project->artifacts()
-            ->findOrFail($this->editingArtifactId)
-            ->revisions()
-            ->find($this->viewingRevisionId);
+        $differ = app(RevisionDiff::class);
+
+        return [
+            'sections' => $differ->sections((string) $from->body, (string) $to->body),
+            ...$differ->stats((string) $from->body, (string) $to->body),
+        ];
     }
 
     public function startCreate(string $type): void
@@ -199,25 +228,40 @@ class ArtifactsManager extends Component
     }
 
     /**
+     * Pick a Revision in the history rail. The first pick opens that Revision to
+     * read (User Story 4); a second picks the other end of a comparison (User
+     * Story 5), ordered oldest first however they were clicked; a third starts a
+     * new selection from the Revision just clicked.
+     */
+    public function pickRevision(int $revisionId): void
+    {
+        if ($this->compareFromId === null || $this->compareToId !== null) {
+            $this->compareFromId = $revisionId;
+            $this->compareToId = null;
+        } elseif ($revisionId !== $this->compareFromId) {
+            [$this->compareFromId, $this->compareToId] = $revisionId < $this->compareFromId
+                ? [$revisionId, $this->compareFromId]
+                : [$this->compareFromId, $revisionId];
+        }
+
+        $this->forgetComparison();
+    }
+
+    /**
+     * Close the history panel and hand the editor its room back.
+     */
+    public function clearRevisionSelection(): void
+    {
+        $this->compareFromId = null;
+        $this->compareToId = null;
+
+        $this->forgetComparison();
+    }
+
+    /**
      * Roll a markdown Artifact back to an older Revision by appending a copy of it
      * as the new current Revision — history is never rewritten (ADR-0005).
      */
-    /**
-     * Open a past Revision to read its full content, without changing the document
-     * (User Story 4).
-     */
-    public function viewRevision(int $revisionId): void
-    {
-        $this->viewingRevisionId = $revisionId;
-        unset($this->viewedRevision);
-    }
-
-    public function stopViewingRevision(): void
-    {
-        $this->viewingRevisionId = null;
-        unset($this->viewedRevision);
-    }
-
     public function restoreRevision(int $revisionId, MarkdownRevisionWriter $writer): void
     {
         $artifact = $this->project->artifacts()->findOrFail($this->editingArtifactId);
@@ -226,10 +270,15 @@ class ArtifactsManager extends Component
         $writer->restore($artifact, $revision, auth()->user());
 
         $this->body = (string) $artifact->body;
-        $this->stopViewingRevision();
-        unset($this->revisions, $this->diff, $this->artifacts);
+        $this->clearRevisionSelection();
+        unset($this->revisions, $this->artifacts);
 
         Flux::toast(variant: 'success', text: __('Revision restored.'));
+    }
+
+    protected function forgetComparison(): void
+    {
+        unset($this->compareFrom, $this->compareTo, $this->viewedRevision, $this->comparison);
     }
 
     protected function saveHtml(BundleUnpacker $unpacker): void
@@ -420,9 +469,9 @@ class ArtifactsManager extends Component
 
     public function resetForm(): void
     {
-        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'diffFromId', 'diffToId', 'viewingRevisionId']);
+        $this->reset(['showForm', 'editingArtifactId', 'formType', 'artifactTitle', 'body', 'entryFile', 'placement', 'mdFile', 'zipFile', 'image', 'file', 'compareFromId', 'compareToId']);
         $this->resetErrorBag();
-        unset($this->viewedRevision);
+        $this->forgetComparison();
     }
 
     public function render(): View
