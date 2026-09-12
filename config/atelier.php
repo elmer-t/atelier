@@ -44,12 +44,18 @@ return [
     | `contact_email` is where data-subject requests are sent; `retention` is
     | the plain-language retention statement shown on the privacy policy.
     |
+    | The packaged `contact_email` is a placeholder, not a deliverable mailbox —
+    | this repository is public, so no real address ships in it. Every deployment
+    | that processes client PII MUST set ATELIER_PRIVACY_CONTACT to a monitored
+    | address; the privacy policy publishes this value verbatim as the route for
+    | data-subject requests, and an unroutable one makes that route a dead end.
+    |
     | See docs/atelier.specs.md §13 (data protection) and the privacy policy.
     |
     */
 
     'privacy' => [
-        'contact_email' => env('ATELIER_PRIVACY_CONTACT', 'privacy@redheadit.nl'),
+        'contact_email' => env('ATELIER_PRIVACY_CONTACT', 'privacy@example.com'),
         'retention' => env(
             'ATELIER_PRIVACY_RETENTION',
             'for as long as the project is active; erased on request or when the project is deleted.',

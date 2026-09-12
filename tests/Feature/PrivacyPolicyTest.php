@@ -14,6 +14,21 @@ it('serves the privacy policy page', function () {
 });
 
 /**
+ * The packaged contact address is a placeholder — this repository is public — so the
+ * policy has to publish whatever the deployment configures instead. Without this, a
+ * hardcoded address would pass the assertion above and still send data-subject requests
+ * into a mailbox nobody reads.
+ */
+it('publishes the deployment-configured data-protection contact', function () {
+    config(['atelier.privacy.contact_email' => 'dpo@studio.test']);
+
+    $this->get(route('privacy'))
+        ->assertOk()
+        ->assertSee('dpo@studio.test')
+        ->assertDontSee('privacy@example.com');
+});
+
+/**
  * The landing page is the single entry point to the policy; the project page and the
  * feedback rail deliberately no longer carry their own link.
  */

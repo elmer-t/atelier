@@ -2,7 +2,7 @@
 
 **Version:** 1.1 (unified artifact model)
 **Owner:** REDHEADIT
-**Deployment target:** `atelier.redheadit.nl` (subdomain), plus a sandbox subdomain (see §6)
+**Deployment target:** `atelier.example.com` (subdomain), plus a sandbox subdomain (see §6)
 **Intended reader:** the engineer/agent building this app. This is a spec, not a tutorial — decisions are already made; where a decision was deliberately deferred it is flagged as **FUTURE**.
 
 **Changes since 1.0:** the separate `Page` and `Attachment` entities are unified into a single **`Artifact`** with a `type` (`markdown` | `html` | `file`). A `file` artifact carries a `placement` (`stage` | `download`) so images, PDFs and office docs render in the viewer (browser-native) or sit in the downloads list, without per-format code. The app never decodes file formats — it streams bytes and the browser renders or downloads. See §3, §5, §7.
@@ -146,11 +146,11 @@ The artifact *concept* is unified, but each type has a **distinct storage pipeli
 ## 6. Sandbox architecture (HTML isolation)
 
 ### 6.1 Why
-Serving arbitrary HTML/JS from the app's own origin would let uploaded scripts access the app's cookies/session/localStorage (stored-XSS / phishing surface on `redheadit.nl`). HTML artifacts are therefore served from an **isolated origin** and embedded via iframe.
+Serving arbitrary HTML/JS from the app's own origin would let uploaded scripts access the app's cookies/session/localStorage (stored-XSS / phishing surface on `example.com`). HTML artifacts are therefore served from an **isolated origin** and embedded via iframe.
 
 ### 6.2 Topology (single box)
-- **App vhost:** `atelier.redheadit.nl` → Laravel app (PHP). Serves the app shell, markdown, file artifacts (inline previews and downloads), admin.
-- **Sandbox vhost:** e.g. `sandbox.redheadit.nl` → **static file server only. No PHP. No Laravel.** Its `DocumentRoot` points at the HTML bundle storage directory.
+- **App vhost:** `atelier.example.com` → Laravel app (PHP). Serves the app shell, markdown, file artifacts (inline previews and downloads), admin.
+- **Sandbox vhost:** e.g. `sandbox.example.com` → **static file server only. No PHP. No Laravel.** Its `DocumentRoot` points at the HTML bundle storage directory.
 - **Shared storage, no file movement:** the app (during upload) unpacks bundles directly into the directory that is the sandbox vhost's docroot. One write, two read paths. Do **not** store HTML bundles under Laravel's `storage/app` (permissions friction); use a dedicated top-level directory, e.g. `/var/www/atelier-sandbox/`, owned appropriately so the app can write and the sandbox vhost can read.
 
 Directory layout (illustrative):
@@ -188,7 +188,7 @@ If confidential HTML is ever required: generate short-lived **signed/expiring if
 - Link → if `public`: straight to project view.
 
 ### 7.3 Public index
-- A public index page at the app root (`atelier.redheadit.nl`) lists **all `public` projects** (that are also `active` — archived projects are not listed; see §9).
+- A public index page at the app root (`atelier.example.com`) lists **all `public` projects** (that are also `active` — archived projects are not listed; see §9).
 - Each entry links to that project's view.
 - Private projects never appear on the index.
 
@@ -242,7 +242,7 @@ Behind Laravel auth (admin login). Multiple admin users supported.
 
 ## 11. Data protection (GDPR / ePrivacy)
 
-Atelier is deployed in the EU (`atelier.redheadit.nl`) and processes client personal data, so the following baseline is a launch requirement, not an enhancement. It is scoped to a **single-operator** tool that captures client contact details at comment time (ADR-0003); a full consent-management platform and multi-tenant DPAs are out of scope.
+Atelier is deployed in the EU (`atelier.example.com`) and processes client personal data, so the following baseline is a launch requirement, not an enhancement. It is scoped to a **single-operator** tool that captures client contact details at comment time (ADR-0003); a full consent-management platform and multi-tenant DPAs are out of scope.
 
 ### 11.1 What is processed
 - **Name + email** of a commenter, captured at comment time (never at view time). Pure viewers stay anonymous.
@@ -263,13 +263,13 @@ Atelier is deployed in the EU (`atelier.redheadit.nl`) and processes client pers
 
 ## 12. Naming
 
-Product name: **Atelier**. Internal-facing (REDHEADIT), formal register; connotes a studio of work-in-progress, which matches the tool's purpose. Deployment subdomain `atelier.redheadit.nl`.
+Product name: **Atelier**. Internal-facing (REDHEADIT), formal register; connotes a studio of work-in-progress, which matches the tool's purpose. Deployment subdomain `atelier.example.com`.
 
 ---
 
 ## 13. Open items to confirm with owner
 
-1. Sandbox subdomain final name (`sandbox.redheadit.nl` assumed).
+1. Sandbox subdomain final name (`sandbox.example.com` assumed).
 2. Final legal-basis and retention wording for the privacy policy (§11).
 
 ### Resolved
