@@ -227,3 +227,9 @@ Atelier captures client name + email at comment time and a persistent
 The data-subject contact address and the plain-language retention statement are
 configurable under `atelier.privacy` (`ATELIER_PRIVACY_CONTACT`,
 `ATELIER_PRIVACY_RETENTION`).
+
+---
+
+## License
+
+Atelier is open-sourced software licensed under the [MIT license](LICENSE) — use it however you like, with no warranty of any kind.
